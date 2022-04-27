@@ -16,7 +16,7 @@ import (
 	"github.com/gitpod-io/gitpod/common-go/log"
 	supervisor "github.com/gitpod-io/gitpod/supervisor/api"
 	tracker "github.com/gitpod-io/gitpod/ws-proxy/pkg/analytics"
-	p "github.com/gitpod-io/gitpod/ws-proxy/pkg/proxy"
+	"github.com/gitpod-io/gitpod/ws-proxy/pkg/proxy"
 	"github.com/gitpod-io/golang-crypto/ssh"
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/xerrors"
@@ -83,7 +83,7 @@ type Server struct {
 	Heartbeater Heartbeat
 
 	sshConfig             *ssh.ServerConfig
-	workspaceInfoProvider p.WorkspaceInfoProvider
+	workspaceInfoProvider proxy.WorkspaceInfoProvider
 }
 
 func init() {
@@ -95,7 +95,7 @@ func init() {
 
 // New creates a new SSH proxy server
 
-func New(signers []ssh.Signer, workspaceInfoProvider p.WorkspaceInfoProvider, heartbeat Heartbeat) *Server {
+func New(signers []ssh.Signer, workspaceInfoProvider proxy.WorkspaceInfoProvider, heartbeat Heartbeat) *Server {
 	server := &Server{
 		workspaceInfoProvider: workspaceInfoProvider,
 		Heartbeater:           &noHeartbeat{},
@@ -327,7 +327,7 @@ func (s *Server) HandleConn(c net.Conn) {
 	cancel()
 }
 
-func (s *Server) GetWorkspaceInfo(workspaceId string) (*p.WorkspaceInfo, error) {
+func (s *Server) GetWorkspaceInfo(workspaceId string) (*proxy.WorkspaceInfo, error) {
 	wsInfo := s.workspaceInfoProvider.WorkspaceInfo(workspaceId)
 	if wsInfo == nil {
 		if matched, _ := regexp.Match(workspaceIDRegex, []byte(workspaceId)); matched {
@@ -338,7 +338,7 @@ func (s *Server) GetWorkspaceInfo(workspaceId string) (*p.WorkspaceInfo, error) 
 	return wsInfo, nil
 }
 
-func (s *Server) TrackSSHConnection(wsInfo *p.WorkspaceInfo, phase string, err error) {
+func (s *Server) TrackSSHConnection(wsInfo *proxy.WorkspaceInfo, phase string, err error) {
 	// if we didn't find an associated user, we don't want to track
 	if wsInfo == nil {
 		return
@@ -361,7 +361,7 @@ func (s *Server) TrackSSHConnection(wsInfo *p.WorkspaceInfo, phase string, err e
 	})
 }
 
-func (s *Server) VerifyPublicKey(ctx context.Context, wsInfo *p.WorkspaceInfo, pk ssh.PublicKey) (bool, error) {
+func (s *Server) VerifyPublicKey(ctx context.Context, wsInfo *proxy.WorkspaceInfo, pk ssh.PublicKey) (bool, error) {
 	for _, keyStr := range wsInfo.SSHPublicKeys {
 		key, _, _, _, err := ssh.ParseAuthorizedKey([]byte(keyStr))
 		if err != nil {
