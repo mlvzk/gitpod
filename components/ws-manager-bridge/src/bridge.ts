@@ -22,6 +22,7 @@ import {
     WorkspaceConditionBool,
     PortVisibility as WsManPortVisibility,
     PromisifiedWorkspaceManagerClient,
+    DeleteVolumeSnapshotRequest,
 } from "@gitpod/ws-manager/lib";
 import { WorkspaceDB } from "@gitpod/gitpod-db/lib/workspace-db";
 import { UserDB } from "@gitpod/gitpod-db/lib/user-db";
@@ -82,14 +83,17 @@ export class WorkspaceManagerBridge implements Disposable {
 
     protected cluster: WorkspaceClusterInfo;
 
-    public start(cluster: WorkspaceClusterInfo, clientProvider: ClientProvider) {
+    protected clientProvider: ClientProvider;
+
+    public start(cluster: WorkspaceClusterInfo, client: ClientProvider) {
         const logPayload = { name: cluster.name, url: cluster.url, govern: cluster.govern };
         log.info(`Starting bridge to cluster...`, logPayload);
         this.cluster = cluster;
+        this.clientProvider = client;
 
         const startStatusUpdateHandler = (writeToDB: boolean) => {
             log.debug(`Starting status update handler: ${cluster.name}`, logPayload);
-            /* no await */ this.startStatusUpdateHandler(clientProvider, writeToDB, logPayload)
+            /* no await */ this.startStatusUpdateHandler(this.clientProvider, writeToDB, logPayload)
                 // this is a mere safe-guard: we do not expect the code inside to fail
                 .catch((err) => log.error("Cannot start status update handler", err));
         };
@@ -104,7 +108,7 @@ export class WorkspaceManagerBridge implements Disposable {
                 throw new Error("controllerInterval <= 0!");
             }
             log.debug(`Starting controller: ${cluster.name}`, logPayload);
-            this.startController(clientProvider, controllerInterval, this.config.controllerMaxDisconnectSeconds);
+            this.startController(this.clientProvider, controllerInterval, this.config.controllerMaxDisconnectSeconds);
         } else {
             // _DO NOT_ update the DB (another bridge is responsible for that)
             // Still, listen to all updates, generate/derive new state and distribute it locally!
@@ -371,11 +375,32 @@ export class WorkspaceManagerBridge implements Disposable {
                     .trace(ctx)
                     .findVolumeSnapshotById(status.conditions.volumeSnapshot.volumeSnapshotName);
                 if (existingSnapshot === undefined) {
-                    await this.workspaceDB.trace(ctx).storeVolumeSnapshot({
+                    const storedVolumeSnapshot = await this.workspaceDB.trace(ctx).storeVolumeSnapshot({
                         id: status.conditions.volumeSnapshot.volumeSnapshotName,
                         creationTime: new Date().toISOString(),
                         volumeHandle: status.conditions.volumeSnapshot.volumeSnapshotHandle,
                     });
+
+                    // since we stored most recent volume snapshot now, delete any old volume snapshots
+                    let client = await this.clientProvider();
+                    let wsInstances = this.workspaceDB.trace(ctx).findInstances(workspaceId);
+                    let instanceIds = (await wsInstances).map((item) => item.id);
+                    for (var i = 0; i < instanceIds.length; i++) {
+                        var instId = instanceIds[i];
+                        if (instId === storedVolumeSnapshot.id) {
+                            continue;
+                        }
+                        let snapshot = await this.workspaceDB.trace(ctx).findVolumeSnapshotById(instId);
+                        if (snapshot === undefined) {
+                            continue;
+                        }
+                        const req = new DeleteVolumeSnapshotRequest();
+                        req.setId(snapshot.id);
+                        req.setVolumeHandle(snapshot.volumeHandle);
+                        req.setSoftDelete(false);
+                        await client.deleteVolumeSnapshot(ctx, req);
+                        await this.workspaceDB.trace(ctx).deleteVolumeSnapshot(snapshot.id);
+                    }
                 }
             }
 
