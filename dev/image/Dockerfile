@@ -219,7 +219,8 @@ ARG PROM_VERSION="2.30.0"
 RUN curl -LO https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-amd64.tar.gz && \
     tar -xzvf prometheus-${PROM_VERSION}.linux-amd64.tar.gz && \
     sudo mv prometheus-${PROM_VERSION}.linux-amd64/promtool /usr/local/bin/promtool && \
-    rm -rf prometheus-${PROM_VERSION}.linux-amd64/
+    rm -rf prometheus-${PROM_VERSION}.linux-amd64/ && \
+    rm -f prometheus-${PROM_VERSION}.linux-amd64.tar.gz
 
 ARG JSONNET_BUNDLER_VERSION="0.4.0"
 RUN curl -L -o jb https://github.com/jsonnet-bundler/jsonnet-bundler/releases/download/v${JSONNET_BUNDLER_VERSION}/jb-linux-amd64 && \
@@ -229,12 +230,16 @@ ARG JSONNET_VERSION="0.17.0"
 RUN curl -LO https://github.com/google/go-jsonnet/releases/download/v${JSONNET_VERSION}/go-jsonnet_${JSONNET_VERSION}_Linux_x86_64.tar.gz && \
     tar -xzvf go-jsonnet_${JSONNET_VERSION}_Linux_x86_64.tar.gz && \
     sudo mv jsonnet /usr/local/bin/jsonnet && \
-    sudo mv jsonnetfmt /usr/local/bin/jsonnetfmt
+    sudo mv jsonnetfmt /usr/local/bin/jsonnetfmt && \
+    tar -tzf go-jsonnet_${JSONNET_VERSION}_Linux_x86_64.tar.gz | xargs rm -f && \
+    rm -f go-jsonnet_${JSONNET_VERSION}_Linux_x86_64.tar.gz
 
 ARG GOJSONTOYAML_VERSION="0.1.0"
 RUN curl -LO https://github.com/brancz/gojsontoyaml/releases/download/v${GOJSONTOYAML_VERSION}/gojsontoyaml_${GOJSONTOYAML_VERSION}_linux_amd64.tar.gz && \
     tar -xzvf gojsontoyaml_${GOJSONTOYAML_VERSION}_linux_amd64.tar.gz && \
-    sudo mv gojsontoyaml /usr/local/bin/gojsontoyaml
+    sudo mv gojsontoyaml /usr/local/bin/gojsontoyaml && \
+    tar -tzf gojsontoyaml_${GOJSONTOYAML_VERSION}_linux_amd64.tar.gz | xargs rm -f && \
+    rm -f gojsontoyaml_${GOJSONTOYAML_VERSION}_linux_amd64.tar.gz
 
 # Install Replicated and KOTS
 RUN curl https://raw.githubusercontent.com/replicatedhq/replicated/v0.38.0/install.sh | sudo bash && \
