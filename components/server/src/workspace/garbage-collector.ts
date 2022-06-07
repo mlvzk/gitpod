@@ -14,6 +14,7 @@ import { TracedWorkspaceDB, DBWithTracing, WorkspaceDB } from "@gitpod/gitpod-db
 import { TraceContext } from "@gitpod/gitpod-protocol/lib/util/tracing";
 import { Config } from "../config";
 import { repeat } from "@gitpod/gitpod-protocol/lib/util/repeat";
+import { WorkspaceManagerClientProvider } from "@gitpod/ws-manager/lib/client-provider";
 
 /**
  * The WorkspaceGarbageCollector has two tasks:
@@ -26,6 +27,8 @@ export class WorkspaceGarbageCollector {
     @inject(WorkspaceDeletionService) protected readonly deletionService: WorkspaceDeletionService;
     @inject(TracedWorkspaceDB) protected readonly workspaceDB: DBWithTracing<WorkspaceDB>;
     @inject(Config) protected readonly config: Config;
+    @inject(WorkspaceManagerClientProvider)
+    protected readonly workspaceManagerClientProvider: WorkspaceManagerClientProvider;
 
     public async start(): Promise<Disposable> {
         if (this.config.workspaceGarbageCollection.disabled) {
@@ -34,7 +37,7 @@ export class WorkspaceGarbageCollector {
                 dispose: () => {},
             };
         }
-        return repeat(async () => this.garbageCollectWorkspacesIfLeader(), 30 * 60 * 1000);
+        return repeat(async () => this.garbageCollectWorkspacesIfLeader(), 1 * 60 * 1000);
     }
 
     public async garbageCollectWorkspacesIfLeader() {
@@ -45,6 +48,9 @@ export class WorkspaceGarbageCollector {
                 log.error("wsgc: error during content deletion", err),
             );
             this.deleteOldPrebuilds().catch((err) => log.error("wsgc: error during prebuild deletion", err));
+            this.deleteOutdatedVolumeSnapshots().catch((err) =>
+                log.error("wsgc: error during volume snapshot gc deletion", err),
+            );
         }
     }
 
@@ -117,6 +123,26 @@ export class WorkspaceGarbageCollector {
 
             log.info(`wsgc: successfully deleted ${deletes.length} prebuilds`);
             span.addTags({ nrOfCollectedPrebuilds: deletes.length });
+        } catch (err) {
+            TraceContext.setError({ span }, err);
+            throw err;
+        } finally {
+            span.finish();
+        }
+    }
+
+    //const client = await this.workspaceManagerClientProvider.get(instanceRegion);
+    //await client.stopWorkspace(ctx, req);
+    // finds volume snapshots that have been superceded by newer volume snapshot and removes them
+    protected async deleteOutdatedVolumeSnapshots() {
+        const span = opentracing.globalTracer().startSpan("deleteOutdatedVolumeSnapshots");
+        try {
+            const volumeSnapshots = await this.workspaceDB.trace({ span }).findVolumeSnapshotForGC();
+            const deletes = await Promise.all(
+                volumeSnapshots.map((vs) => log.info(`found volume snapshot for GC: ${vs}`)),
+            );
+            log.info(`wsgc: successfully deleted ${deletes.length} volume snapshots`);
+            span.addTags({ nrOfCollectedVolumeSnapshots: deletes.length });
         } catch (err) {
             TraceContext.setError({ span }, err);
             throw err;

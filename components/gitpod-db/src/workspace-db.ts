@@ -165,6 +165,7 @@ export interface WorkspaceDB {
     storeVolumeSnapshot(snapshot: VolumeSnapshot): Promise<VolumeSnapshot>;
     deleteVolumeSnapshot(volumeSnapshotId: string): Promise<void>;
     updateVolumeSnapshot(snapshot: DeepPartial<VolumeSnapshot> & Pick<VolumeSnapshot, "id">): Promise<void>;
+    findVolumeSnapshotForGC(): Promise<VolumeSnapshot[]>;
 
     storePrebuiltWorkspace(pws: PrebuiltWorkspace): Promise<PrebuiltWorkspace>;
     findPrebuiltWorkspaceByCommit(cloneURL: string, commit: string): Promise<PrebuiltWorkspace | undefined>;
