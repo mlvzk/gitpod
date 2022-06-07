@@ -397,7 +397,7 @@ export class WorkspaceManagerBridge implements Disposable {
                         const req = new DeleteVolumeSnapshotRequest();
                         req.setId(snapshot.id);
                         req.setVolumeHandle(snapshot.volumeHandle);
-                        req.setSoftDelete(false);
+                        req.setSoftDelete(false) ;
                         await client.deleteVolumeSnapshot(ctx, req );
                         await this.workspaceDB.trace(ctx).deleteVolumeSnapshot(snapshot.id);
                     }*/
