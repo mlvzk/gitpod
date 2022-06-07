@@ -521,6 +521,8 @@ export namespace DeleteVolumeSnapshotRequest {
 }
 
 export class DeleteVolumeSnapshotResponse extends jspb.Message {
+    getWasDeleted(): boolean;
+    setWasDeleted(value: boolean): DeleteVolumeSnapshotResponse;
 
     serializeBinary(): Uint8Array;
     toObject(includeInstance?: boolean): DeleteVolumeSnapshotResponse.AsObject;
@@ -534,6 +536,7 @@ export class DeleteVolumeSnapshotResponse extends jspb.Message {
 
 export namespace DeleteVolumeSnapshotResponse {
     export type AsObject = {
+        wasDeleted: boolean,
     }
 }
 

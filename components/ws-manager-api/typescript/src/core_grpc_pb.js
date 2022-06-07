@@ -410,7 +410,8 @@ controlAdmission: {
     responseSerialize: serialize_wsman_ControlAdmissionResponse,
     responseDeserialize: deserialize_wsman_ControlAdmissionResponse,
   },
-  deleteVolumeSnapshot: {
+  // deleteVolumeSnapshot asks ws-manager to delete specific volume snapshot and delete source from cloud provider as well
+deleteVolumeSnapshot: {
     path: '/wsman.WorkspaceManager/DeleteVolumeSnapshot',
     requestStream: false,
     responseStream: false,

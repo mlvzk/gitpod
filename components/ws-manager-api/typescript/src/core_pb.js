@@ -4360,7 +4360,7 @@ proto.wsman.DeleteVolumeSnapshotResponse.prototype.toObject = function(opt_inclu
  */
 proto.wsman.DeleteVolumeSnapshotResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-
+    wasDeleted: jspb.Message.getBooleanFieldWithDefault(msg, 1, false)
   };
 
   if (includeInstance) {
@@ -4397,6 +4397,10 @@ proto.wsman.DeleteVolumeSnapshotResponse.deserializeBinaryFromReader = function(
     }
     var field = reader.getFieldNumber();
     switch (field) {
+    case 1:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setWasDeleted(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -4426,6 +4430,31 @@ proto.wsman.DeleteVolumeSnapshotResponse.prototype.serializeBinary = function() 
  */
 proto.wsman.DeleteVolumeSnapshotResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
+  f = message.getWasDeleted();
+  if (f) {
+    writer.writeBool(
+      1,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional bool was_deleted = 1;
+ * @return {boolean}
+ */
+proto.wsman.DeleteVolumeSnapshotResponse.prototype.getWasDeleted = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 1, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.wsman.DeleteVolumeSnapshotResponse} returns this
+ */
+proto.wsman.DeleteVolumeSnapshotResponse.prototype.setWasDeleted = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 1, value);
 };
 
 

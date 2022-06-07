@@ -22,7 +22,6 @@ import {
     WorkspaceConditionBool,
     PortVisibility as WsManPortVisibility,
     PromisifiedWorkspaceManagerClient,
-    /*DeleteVolumeSnapshotRequest,*/
 } from "@gitpod/ws-manager/lib";
 import { WorkspaceDB } from "@gitpod/gitpod-db/lib/workspace-db";
 import { UserDB } from "@gitpod/gitpod-db/lib/user-db";

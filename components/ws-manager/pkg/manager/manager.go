@@ -467,6 +467,9 @@ func (m *Manager) DeleteVolumeSnapshot(ctx context.Context, req *api.DeleteVolum
 		log.WithError(err).Errorf("failed to delete volume snapshot `%s`", req.Id)
 		return nil, err
 	}
+	if !k8serr.IsNotFound(err) {
+		okResponse.WasDeleted = true
+	}
 
 	return okResponse, nil
 }

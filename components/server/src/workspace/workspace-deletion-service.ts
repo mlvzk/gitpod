@@ -5,7 +5,7 @@
  */
 
 import { inject, injectable } from "inversify";
-import { WorkspaceSoftDeletion } from "@gitpod/gitpod-protocol";
+import { WorkspaceSoftDeletion, VolumeSnapshot } from "@gitpod/gitpod-protocol";
 import {
     WorkspaceDB,
     WorkspaceAndOwner,
@@ -16,12 +16,17 @@ import {
 import { StorageClient } from "../storage/storage-client";
 import { Config } from "../config";
 import { TraceContext } from "@gitpod/gitpod-protocol/lib/util/tracing";
+import { WorkspaceManagerClientProvider } from "@gitpod/ws-manager/lib/client-provider";
+import { DeleteVolumeSnapshotRequest } from "@gitpod/ws-manager/lib";
+import { log } from "@gitpod/gitpod-protocol/lib/util/logging";
 
 @injectable()
 export class WorkspaceDeletionService {
     @inject(TracedWorkspaceDB) protected readonly db: DBWithTracing<WorkspaceDB>;
     @inject(StorageClient) protected readonly storageClient: StorageClient;
     @inject(Config) protected readonly config: Config;
+    @inject(WorkspaceManagerClientProvider)
+    protected readonly workspaceManagerClientProvider: WorkspaceManagerClientProvider;
 
     /**
      * This method does nothing beyond marking the given workspace as 'softDeleted' with the given cause and sets the 'softDeletedTime' to now.
@@ -97,5 +102,59 @@ export class WorkspaceDeletionService {
     protected async deleteWorkspaceStorage(ws: WorkspaceAndOwner, includeSnapshots: boolean): Promise<boolean> {
         await this.storageClient.deleteWorkspaceBackups(ws.ownerId, ws.id, includeSnapshots);
         return true;
+    }
+
+    //
+    //await client.stopWorkspace(ctx, req);
+
+    public async garbageCollectVolumeSnapshot(ctx: TraceContext, vs: VolumeSnapshot): Promise<boolean> {
+        const span = TraceContext.startSpan("garbageCollectVolumeSnapshot", ctx);
+
+        try {
+            const allClusters = await this.workspaceManagerClientProvider.getAllWorkspaceClusters();
+            // we need to do two things here:
+            // 1. we want to delete volume snapshot object from all workspace clusters
+            // 2. we want to delete cloud provider source snapshot
+            let wasDeleted = false;
+            let index = 0;
+            for (let cluster of allClusters) {
+                if (cluster.state != "available") {
+                    continue;
+                }
+                const client = await this.workspaceManagerClientProvider.get(cluster.name);
+                const req = new DeleteVolumeSnapshotRequest();
+                req.setId(vs.id);
+                req.setVolumeHandle(vs.volumeHandle);
+
+                let softDelete = true;
+                // if we did not delete volume snapshot yet and this is our last cluster, make sure we perform hard delete
+                // meaning we will restore volume snapshot in that cluster, and then delete it, so that it will be removed
+                // from cloud provider as well
+                if (!wasDeleted && index == allClusters.length - 1) {
+                    softDelete = false;
+                }
+                req.setSoftDelete(softDelete);
+
+                index = index + 1;
+                try {
+                    const deleteResp = await client.deleteVolumeSnapshot(ctx, req);
+                    if (deleteResp.getWasDeleted() == true) {
+                        wasDeleted = true;
+                    }
+                } catch (err) {
+                    log.error("wds: deleteVolumeSnapshot failed", err);
+                }
+            }
+            if (wasDeleted) {
+                await this.db.trace({ span }).deleteVolumeSnapshot(vs.id);
+            }
+
+            return wasDeleted;
+        } catch (err) {
+            TraceContext.setError({ span }, err);
+            throw err;
+        } finally {
+            span.finish();
+        }
     }
 }

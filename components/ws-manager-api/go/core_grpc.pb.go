@@ -48,6 +48,7 @@ type WorkspaceManagerClient interface {
 	TakeSnapshot(ctx context.Context, in *TakeSnapshotRequest, opts ...grpc.CallOption) (*TakeSnapshotResponse, error)
 	// controlAdmission makes a workspace accessible for everyone or for the owner only
 	ControlAdmission(ctx context.Context, in *ControlAdmissionRequest, opts ...grpc.CallOption) (*ControlAdmissionResponse, error)
+	// deleteVolumeSnapshot asks ws-manager to delete specific volume snapshot and delete source from cloud provider as well
 	DeleteVolumeSnapshot(ctx context.Context, in *DeleteVolumeSnapshotRequest, opts ...grpc.CallOption) (*DeleteVolumeSnapshotResponse, error)
 }
 
@@ -216,6 +217,7 @@ type WorkspaceManagerServer interface {
 	TakeSnapshot(context.Context, *TakeSnapshotRequest) (*TakeSnapshotResponse, error)
 	// controlAdmission makes a workspace accessible for everyone or for the owner only
 	ControlAdmission(context.Context, *ControlAdmissionRequest) (*ControlAdmissionResponse, error)
+	// deleteVolumeSnapshot asks ws-manager to delete specific volume snapshot and delete source from cloud provider as well
 	DeleteVolumeSnapshot(context.Context, *DeleteVolumeSnapshotRequest) (*DeleteVolumeSnapshotResponse, error)
 	mustEmbedUnimplementedWorkspaceManagerServer()
 }

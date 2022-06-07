@@ -760,17 +760,32 @@ export abstract class AbstractTypeORMWorkspaceDBImpl implements WorkspaceDB {
         await volumeSnapshots.update(volumeSnapshot.id, volumeSnapshot);
     }
 
-    public async findVolumeSnapshotForGC(): Promise<VolumeSnapshot[]> {
+    // finds all workspaces which have more then one volume snapshots
+    // as we only want to keep one latest volume snapshot per workspace
+    public async findVolumeSnapshotWorkspacesForGC(): Promise<string[]> {
         const volumeSnapshotRepo = await this.getVolumeSnapshotRepo();
         const dbResults = await volumeSnapshotRepo.query(
             `
-                SELECT vs.*
-                FROM d_b_volume_snapshot AS vs
-                GROUP BY vs.workspaceId
-                HAVING
-                    COUNT(*) > 1
-                ORDER BY vs.creationTime desc;
+            SELECT vs.workspaceId
+            FROM d_b_volume_snapshot AS vs
+            GROUP BY vs.workspaceId
+            HAVING COUNT(*) > 1;
             `,
+        );
+        return dbResults as string[];
+    }
+
+    // returns the list of all volume snapshots for specific workspace id
+    public async findVolumeSnapshotForGCByWorkspaceId(ws: string): Promise<VolumeSnapshot[]> {
+        const volumeSnapshotRepo = await this.getVolumeSnapshotRepo();
+        const dbResults = await volumeSnapshotRepo.query(
+            `
+            SELECT *
+            FROM d_b_volume_snapshot AS vs
+            WHERE vs.workspaceId = ?
+            ORDER BY vs.creationTime desc;
+            `,
+            [ws],
         );
         return dbResults as VolumeSnapshot[];
     }

@@ -14,7 +14,6 @@ import { TracedWorkspaceDB, DBWithTracing, WorkspaceDB } from "@gitpod/gitpod-db
 import { TraceContext } from "@gitpod/gitpod-protocol/lib/util/tracing";
 import { Config } from "../config";
 import { repeat } from "@gitpod/gitpod-protocol/lib/util/repeat";
-import { WorkspaceManagerClientProvider } from "@gitpod/ws-manager/lib/client-provider";
 
 /**
  * The WorkspaceGarbageCollector has two tasks:
@@ -27,8 +26,6 @@ export class WorkspaceGarbageCollector {
     @inject(WorkspaceDeletionService) protected readonly deletionService: WorkspaceDeletionService;
     @inject(TracedWorkspaceDB) protected readonly workspaceDB: DBWithTracing<WorkspaceDB>;
     @inject(Config) protected readonly config: Config;
-    @inject(WorkspaceManagerClientProvider)
-    protected readonly workspaceManagerClientProvider: WorkspaceManagerClientProvider;
 
     public async start(): Promise<Disposable> {
         if (this.config.workspaceGarbageCollection.disabled) {
@@ -131,15 +128,20 @@ export class WorkspaceGarbageCollector {
         }
     }
 
-    //const client = await this.workspaceManagerClientProvider.get(instanceRegion);
-    //await client.stopWorkspace(ctx, req);
     // finds volume snapshots that have been superceded by newer volume snapshot and removes them
     protected async deleteOutdatedVolumeSnapshots() {
         const span = opentracing.globalTracer().startSpan("deleteOutdatedVolumeSnapshots");
         try {
-            const volumeSnapshots = await this.workspaceDB.trace({ span }).findVolumeSnapshotForGC();
+            const workspaces = await this.workspaceDB.trace({ span }).findVolumeSnapshotWorkspacesForGC();
+            const volumeSnapshots = await Promise.all(
+                workspaces.map((ws) => this.workspaceDB.trace({ span }).findVolumeSnapshotForGCByWorkspaceId(ws)),
+            );
+
             const deletes = await Promise.all(
-                volumeSnapshots.map((vs) => log.info(`found volume snapshot for GC: ${vs}`)),
+                volumeSnapshots.map((vss) =>
+                    // skip the first volume snapshot, as it is most recent, and the rest pass into deletion
+                    vss.slice(1).map((vs) => this.deletionService.garbageCollectVolumeSnapshot({ span }, vs)),
+                ),
             );
             log.info(`wsgc: successfully deleted ${deletes.length} volume snapshots`);
             span.addTags({ nrOfCollectedVolumeSnapshots: deletes.length });

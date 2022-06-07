@@ -227,7 +227,10 @@ message DeleteVolumeSnapshotRequest{
     bool soft_delete = 3;
 }
 
-message DeleteVolumeSnapshotResponse {}
+message DeleteVolumeSnapshotResponse {
+    // was_deleted will be true if we were able to delete volume snapshot from the cluster
+    bool was_deleted = 1;
+}
 
 enum AdmissionLevel {
     // WORKSPACE_ADMIT_OWNER_ONLY means the workspace can only be accessed using the owner token
