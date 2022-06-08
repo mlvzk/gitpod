@@ -777,6 +777,7 @@ export abstract class AbstractTypeORMWorkspaceDBImpl implements WorkspaceDB {
 
     // returns the list of all volume snapshots for specific workspace id
     public async findVolumeSnapshotForGCByWorkspaceId(ws: string): Promise<VolumeSnapshot[]> {
+        log.info("findVolumeSnapshotForGCByWorkspaceId", ws);
         const volumeSnapshotRepo = await this.getVolumeSnapshotRepo();
         const dbResults = await volumeSnapshotRepo.query(
             `
@@ -787,6 +788,7 @@ export abstract class AbstractTypeORMWorkspaceDBImpl implements WorkspaceDB {
             `,
             [ws],
         );
+        log.info("findVolumeSnapshotForGCByWorkspaceId results", dbResults);
         return dbResults as VolumeSnapshot[];
     }
 
