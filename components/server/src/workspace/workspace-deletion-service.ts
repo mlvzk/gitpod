@@ -56,7 +56,7 @@ export class WorkspaceDeletionService {
 
         try {
             const deleteSnapshots = ws.softDeleted === "user";
-            const successfulDeleted = await this.deleteWorkspaceStorage(ws, deleteSnapshots);
+            const successfulDeleted = await this.deleteWorkspaceStorage({ span }, ws, deleteSnapshots);
             await this.db.trace({ span }).updatePartial(ws.id, { contentDeletedTime: new Date().toISOString() });
             return successfulDeleted;
         } catch (err) {
@@ -75,7 +75,7 @@ export class WorkspaceDeletionService {
         const span = TraceContext.startSpan("garbageCollectPrebuild", ctx);
 
         try {
-            const successfulDeleted = await this.deleteWorkspaceStorage(ws, true);
+            const successfulDeleted = await this.deleteWorkspaceStorage({ span }, ws, true);
             const now = new Date().toISOString();
             // Note: soft & content deletion happens at the same time, because prebuilds are reproducible so there's no need for the extra time span.
             await this.db.trace({ span }).updatePartial(ws.id, {
@@ -99,14 +99,32 @@ export class WorkspaceDeletionService {
      * @param ws
      * @param includeSnapshots
      */
-    protected async deleteWorkspaceStorage(ws: WorkspaceAndOwner, includeSnapshots: boolean): Promise<boolean> {
-        await this.storageClient.deleteWorkspaceBackups(ws.ownerId, ws.id, includeSnapshots);
+    protected async deleteWorkspaceStorage(
+        ctx: TraceContext,
+        ws: WorkspaceAndOwner,
+        includeSnapshots: boolean,
+    ): Promise<boolean> {
+        const span = TraceContext.startSpan("deleteWorkspaceStorage", ctx);
+        try {
+            await this.storageClient.deleteWorkspaceBackups(ws.ownerId, ws.id, includeSnapshots);
+            let vss = await this.db.trace({ span }).findVolumeSnapshotForGCByWorkspaceId(ws.id);
+            await Promise.all(vss.map((vs) => this.garbageCollectVolumeSnapshot({ span }, vs)));
+        } catch (err) {
+            TraceContext.setError({ span }, err);
+            throw err;
+        } finally {
+            span.finish();
+        }
         return true;
     }
 
-    //
-    //await client.stopWorkspace(ctx, req);
-
+    /**
+     * Perform deletion of volume snapshot from all clusters and from gloud provider:
+     *  - throws an error if something went wrong during deletion
+     *  - returns true in case of successful deletion
+     * @param ctx
+     * @param vs
+     */
     public async garbageCollectVolumeSnapshot(ctx: TraceContext, vs: VolumeSnapshot): Promise<boolean> {
         const span = TraceContext.startSpan("garbageCollectVolumeSnapshot", ctx);
 

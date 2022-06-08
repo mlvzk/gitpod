@@ -369,38 +369,18 @@ export class WorkspaceManagerBridge implements Disposable {
                         status.conditions.volumeSnapshot.volumeSnapshotName,
                         instance.id,
                     );
-                }
-                let existingSnapshot = await this.workspaceDB
-                    .trace(ctx)
-                    .findVolumeSnapshotById(status.conditions.volumeSnapshot.volumeSnapshotName);
-                if (existingSnapshot === undefined) {
-                    /*const storedVolumeSnapshot =*/ await this.workspaceDB.trace(ctx).storeVolumeSnapshot({
-                        id: status.conditions.volumeSnapshot.volumeSnapshotName,
-                        workspaceId: workspaceId,
-                        creationTime: new Date().toISOString(),
-                        volumeHandle: status.conditions.volumeSnapshot.volumeSnapshotHandle,
-                    });
-
-                    // since we stored most recent volume snapshot now, delete any old volume snapshots
-                    /*let client = await this.clientProvider();
-                    let wsInstances = this.workspaceDB.trace(ctx).findInstances(workspaceId);
-                    let instanceIds = (await wsInstances).map((item) => item.id);
-                    for (var i = 0; i < instanceIds.length; i++) {
-                        var instId = instanceIds[i];
-                        if (instId === storedVolumeSnapshot.id) {
-                            continue;
-                        }
-                        let snapshot = await this.workspaceDB.trace(ctx).findVolumeSnapshotById(instId);
-                        if (snapshot === undefined) {
-                            continue;
-                        }
-                        const req = new DeleteVolumeSnapshotRequest();
-                        req.setId(snapshot.id);
-                        req.setVolumeHandle(snapshot.volumeHandle);
-                        req.setSoftDelete(false) ;
-                        await client.deleteVolumeSnapshot(ctx, req );
-                        await this.workspaceDB.trace(ctx).deleteVolumeSnapshot(snapshot.id);
-                    }*/
+                } else {
+                    let existingSnapshot = await this.workspaceDB
+                        .trace(ctx)
+                        .findVolumeSnapshotById(status.conditions.volumeSnapshot.volumeSnapshotName);
+                    if (existingSnapshot === undefined) {
+                        await this.workspaceDB.trace(ctx).storeVolumeSnapshot({
+                            id: status.conditions.volumeSnapshot.volumeSnapshotName,
+                            workspaceId: workspaceId,
+                            creationTime: new Date().toISOString(),
+                            volumeHandle: status.conditions.volumeSnapshot.volumeSnapshotHandle,
+                        });
+                    }
                 }
             }
 
