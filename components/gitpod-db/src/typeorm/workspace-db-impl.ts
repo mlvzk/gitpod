@@ -772,6 +772,7 @@ export abstract class AbstractTypeORMWorkspaceDBImpl implements WorkspaceDB {
             HAVING COUNT(*) > 1;
             `,
         );
+        log.info("dbResults", dbResults);
         return dbResults as string[];
     }
 
