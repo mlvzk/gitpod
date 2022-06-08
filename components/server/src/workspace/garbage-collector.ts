@@ -133,6 +133,7 @@ export class WorkspaceGarbageCollector {
         const span = opentracing.globalTracer().startSpan("deleteOutdatedVolumeSnapshots");
         try {
             const workspaces = await this.workspaceDB.trace({ span }).findVolumeSnapshotWorkspacesForGC();
+            log.info("workspaces", workspaces);
             const volumeSnapshots = await Promise.all(
                 workspaces.map((ws) => this.workspaceDB.trace({ span }).findVolumeSnapshotForGCByWorkspaceId(ws)),
             );
