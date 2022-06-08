@@ -128,14 +128,18 @@ export class WorkspaceDeletionService {
     public async garbageCollectVolumeSnapshot(ctx: TraceContext, vs: VolumeSnapshot): Promise<boolean> {
         const span = TraceContext.startSpan("garbageCollectVolumeSnapshot", ctx);
 
+        log.info("garbageCollectVolumeSnapshot", vs);
+
         try {
             const allClusters = await this.workspaceManagerClientProvider.getAllWorkspaceClusters();
+            log.info("allClusters", allClusters);
             // we need to do two things here:
             // 1. we want to delete volume snapshot object from all workspace clusters
             // 2. we want to delete cloud provider source snapshot
             let wasDeleted = false;
             let index = 0;
             for (let cluster of allClusters) {
+                log.info("cluster", cluster);
                 if (cluster.state != "available") {
                     continue;
                 }
@@ -156,7 +160,9 @@ export class WorkspaceDeletionService {
                 index = index + 1;
                 try {
                     const deleteResp = await client.deleteVolumeSnapshot(ctx, req);
-                    if (deleteResp.getWasDeleted() == true) {
+                    log.info("req", req);
+                    log.info("resp", deleteResp);
+                    if (deleteResp.getWasDeleted() === true) {
                         wasDeleted = true;
                     }
                 } catch (err) {
@@ -164,6 +170,7 @@ export class WorkspaceDeletionService {
                 }
             }
             if (wasDeleted) {
+                log.info("called deleteVolumeSnapshot for db");
                 await this.db.trace({ span }).deleteVolumeSnapshot(vs.id);
             }
 

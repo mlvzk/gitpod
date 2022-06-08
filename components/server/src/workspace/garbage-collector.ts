@@ -137,14 +137,15 @@ export class WorkspaceGarbageCollector {
                 workspaces.map((ws) => this.workspaceDB.trace({ span }).findVolumeSnapshotForGCByWorkspaceId(ws)),
             );
 
+            log.info("volumeSnapshots", volumeSnapshots);
+
             const deletes = await Promise.all(
                 volumeSnapshots.map((vss) =>
-                    // skip the first volume snapshot, as it is most recent, and the rest pass into deletion
+                    // skip the first volume snapshot, as it is most recent, and then pass the rest into deletion
                     vss.slice(1).map((vs) => this.deletionService.garbageCollectVolumeSnapshot({ span }, vs)),
                 ),
             );
-            log.info(`wsgc: successfully deleted ${deletes.length} volume snapshots`);
-            span.addTags({ nrOfCollectedVolumeSnapshots: deletes.length });
+            log.info("deletes", deletes);
         } catch (err) {
             TraceContext.setError({ span }, err);
             throw err;
