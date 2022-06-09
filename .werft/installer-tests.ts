@@ -60,6 +60,11 @@ const INFRA_PHASES: { [name: string]: InfraConfig } = {
         makeTarget: "check-gitpod-installation",
         description: "Check gitpod installation",
     },
+    KOTS_UPGRADE: {
+        phase: "kots-upgrade",
+        makeTarget: "kots-uprgade",
+        description: "Upgrade Gitpod installation to latest version using KOTS CLI",
+    },
     RUN_INTEGRATION_TESTS: {
         phase: "run-integration-tests",
         makeTarget: "run-tests",
@@ -95,6 +100,19 @@ const TEST_CONFIGURATIONS: { [name: string]: TestConfig } = {
             "CHECK_INSTALLATION",
             "RUN_INTEGRATION_TESTS",
             "RESULTS",
+            "DESTROY",
+        ],
+    },
+    STANDARD_GKE_UPGRADE_TEST: {
+        DESCRIPTION: `Deploy Gitpod on GKE, and test upgrade from ${version} to latest version`,
+        PHASES: [
+            "STANDARD_GKE_CLUSTER",
+            "CERT_MANAGER",
+            "GCP_MANAGED_DNS",
+            "INSTALL_GITPOD",
+            "CHECK_INSTALLATION",
+            "KOTS_UPGRADE",
+            "CHECK_INSTALLATION",
             "DESTROY",
         ],
     },
