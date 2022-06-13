@@ -55,4 +55,4 @@ components/ws-proxy/ws-proxy
 components/server/*.log
 
 # Jetbrains workspace files
-.idea/misc.xml
+/.idea
