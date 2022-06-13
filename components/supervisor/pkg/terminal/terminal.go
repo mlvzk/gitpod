@@ -76,6 +76,7 @@ func (m *Mux) Start(cmd *exec.Cmd, options TermOptions) (alias string, err error
 
 	go func() {
 		term.waitErr = cmd.Wait()
+		log.WithField("alias", alias).WithField("cmd", cmd.Path).WithError(term.waitErr).Info("terminal command awaited")
 		close(term.waitDone)
 		_ = m.CloseTerminal(alias, 0*time.Second)
 	}()
@@ -87,6 +88,8 @@ func (m *Mux) Start(cmd *exec.Cmd, options TermOptions) (alias string, err error
 func (m *Mux) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	log.Info("closing all terminals")
 
 	var err error
 	for k := range m.terms {

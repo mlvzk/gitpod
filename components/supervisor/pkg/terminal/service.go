@@ -138,6 +138,8 @@ func (srv *MuxTerminalService) OpenWithOptions(ctx context.Context, req *api.Ope
 
 // Close closes a terminal for the given alias.
 func (srv *MuxTerminalService) Shutdown(ctx context.Context, req *api.ShutdownTerminalRequest) (*api.ShutdownTerminalResponse, error) {
+	log.WithField("alias", req.Alias).Info("terminal service: request to close terminal")
+
 	err := srv.Mux.CloseTerminal(req.Alias, closeTerminaldefaultGracePeriod)
 	if err == ErrNotFound {
 		return nil, status.Error(codes.NotFound, err.Error())
