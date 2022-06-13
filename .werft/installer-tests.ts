@@ -5,9 +5,9 @@ import { Werft } from "./util/werft";
 const testConfig: string = process.argv.length > 2 ? process.argv[2] : "STANDARD_K3S_TEST";
 // we can provide the version of the gitpod to install (eg: 2022.4.2)
 // "-" is the default value which will install the latest version
-const version: string = process.argv.length > 3 ? process.argv[3] : "";
+const version: string = process.argv.length > 3 ? process.argv[3] : "-";
 
-const channel: string = process.argv.length > 4 ? process.argv[4] : "";
+const channel: string = process.argv.length > 4 ? process.argv[4] : "unstable";
 
 const makefilePath: string = join("install/tests");
 
@@ -43,6 +43,11 @@ const INFRA_PHASES: { [name: string]: InfraConfig } = {
         phase: "setup-external-dns-with-cloud-dns",
         makeTarget: "managed-dns",
         description: "Sets up external-dns & cloudDNS config",
+    },
+    GENERATE_KOTS_CONFIG: {
+        phase: "generate-kots-config",
+        makeTarget: "generate-kots-config",
+        description: `Generate KOTS Config file`,
     },
     INSTALL_GITPOD_IGNORE_PREFLIGHTS: {
         phase: "install-gitpod-without-preflights",
@@ -96,6 +101,7 @@ const TEST_CONFIGURATIONS: { [name: string]: TestConfig } = {
             "STANDARD_GKE_CLUSTER",
             "CERT_MANAGER",
             "GCP_MANAGED_DNS",
+            "GENERATE_KOTS_CONFIG",
             "INSTALL_GITPOD",
             "CHECK_INSTALLATION",
             "RUN_INTEGRATION_TESTS",
@@ -109,6 +115,7 @@ const TEST_CONFIGURATIONS: { [name: string]: TestConfig } = {
             "STANDARD_GKE_CLUSTER",
             "CERT_MANAGER",
             "GCP_MANAGED_DNS",
+            "GENERATE_KOTS_CONFIG",
             "INSTALL_GITPOD",
             "CHECK_INSTALLATION",
             "KOTS_UPGRADE",
@@ -123,7 +130,8 @@ const TEST_CONFIGURATIONS: { [name: string]: TestConfig } = {
         PHASES: [
             "STANDARD_K3S_CLUSTER_ON_GCP",
             "CERT_MANAGER",
-            "INSTALL_GITPOD_IGNORE_PREFLIGHTS",
+            "GENERATE_KOTS_CONFIG",
+            "INSTALL_GITPOD",
             "CHECK_INSTALLATION",
             "RUN_INTEGRATION_TESTS",
             "RESULTS",
@@ -135,7 +143,8 @@ const TEST_CONFIGURATIONS: { [name: string]: TestConfig } = {
         PHASES: [
             "STANDARD_K3S_CLUSTER_ON_GCP",
             "CERT_MANAGER",
-            "INSTALL_GITPOD_IGNORE_PREFLIGHTS",
+            "GENERATE_KOTS_CONFIG",
+            "INSTALL_GITPOD",
             "CHECK_INSTALLATION",
             "RESULTS",
         ],
@@ -165,8 +174,9 @@ function getKubeconfig() {
 export async function installerTests(config: TestConfig) {
     console.log(config.DESCRIPTION);
     for (let phase of config.PHASES) {
-        const phaseSteps = INFRA_PHASES[phase];
-        const ret = callMakeTargets(phaseSteps.phase, phaseSteps.description, phaseSteps.makeTarget);
+        const args = phase.split(" ");
+        const phaseSteps = INFRA_PHASES[args[0]];
+        const ret = callMakeTargets(phaseSteps.phase, phaseSteps.description, phaseSteps.makeTarget, args.slice(1));
         if (ret) {
             // there is not point in continuing if one stage fails
             // TODO: maybe add failable, phases
@@ -175,8 +185,8 @@ export async function installerTests(config: TestConfig) {
     }
 }
 
-function callMakeTargets(phase: string, description: string, makeTarget: string) {
-    werft.phase(phase, description);
+function callMakeTargets(phase: string, description: string, makeTarget: string, args: string[]) {
+    werft.phase(phase, `${description} ${args}`);
 
     const response = exec(`make -C ${makefilePath} ${makeTarget}`, { slice: "call-make-target", dontCheckRc: true });
 
@@ -189,6 +199,10 @@ function callMakeTargets(phase: string, description: string, makeTarget: string)
     }
 
     return response.code;
+}
+
+function sample(stages: string[]): string {
+    return stages[Math.floor(Math.random() * stages.length)];
 }
 
 function cleanup() {

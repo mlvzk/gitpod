@@ -3,6 +3,9 @@ args:
 - name: fromVersion
   desc: "The version from which you want to test upgrading to the latest"
   required: true
+- name: channel
+  desc: "Replicated channel to use"
+  required: false
 pod:
   serviceAccount: werft
   nodeSelector:
@@ -95,7 +98,13 @@ pod:
         printf '{{ toJson . }}' > context.json
 
         FROM_VERSION="{{ .Annotations.fromVersion }}"
-        npx ts-node .werft/installer-tests.ts "STANDARD_GKE_UPGRADE_TEST" ${FROM_VERSION}
+
+        export CHANNEL="{{ .Annotations.channel }}"
+        if [[ "$CHANNEL" == "<no value>" ]]; then
+          CHANNEL="beta"
+        fi
+
+        npx ts-node .werft/installer-tests.ts "STANDARD_GKE_UPGRADE_TEST" ${FROM_VERSION} ${CHANNEL}
 # The bit below makes this a cron job
 # plugins:
 #   cron: "15 4 * * *"

@@ -22,7 +22,7 @@ export async function triggerUpgradeTests(werft: Werft, config: JobConfig, usern
         exec(`git config --global user.name "${username}"`);
         const annotation = `-a fromVersion=${config.fromVersion}`;
         exec(
-            `KUBECONFIG=/workspace/gitpod/kubeconfigs/core-dev werft run --remote-job-path .werft/run-sh-upgrade-tests-gke.yaml ${annotation} github`,
+            `WERFT_CREDENTIAL_HELPER="" KUBECONFIG=/workspace/gitpod/kubeconfigs/core-dev werft run --remote-job-path .werft/run-sh-upgrade-tests-gke.yaml ${annotation} github`,
             {
                 slice: phases.TRIGGER_UPGRADE_TESTS,
             },

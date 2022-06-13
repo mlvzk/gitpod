@@ -56,10 +56,15 @@ get-kubeconfig:
 	${KUBECONFIG}
 
 KOTS_KONFIG := "./manifests/kots-config.yaml"
+
+.PHONY:
+## generate-kots-config: Generate the kots config based on test config
+generate-kots-config:
+	envsubst < ${KOTS_KONFIG} > tmp_config.yml
+
 license_community_beta := "../licenses/Community (Beta).yaml"
 license_community_stable := "../licenses/Community.yaml"
 license_community_unstable := "../licenses/Community (Unstable).yaml"
-license_community_$(channel) := "../licenses/$(channel).yaml"
 
 install-kots-cli:
 	curl https://kots.io/install | bash
@@ -69,9 +74,10 @@ channel ?= unstable
 version ?= -
 kots-install: version-flag = $(if $(version:-=),--app-version-label=$(version),)
 kots-install: preflight-flag = $(if $(preflights:true=),--skip-preflights,)
-kots-install: license-file = $(license_community_$(channel))
+kots-install: license-file = $(if $(license_community_$(channel)),$(license_community_$(channel)),"../licenses/$(channel).yaml")
+TEST := $(if $(TEST),$(TEST),$(something else))
+
 kots-install: install-kots-cli
-	envsubst < ${KOTS_KONFIG} > tmp_config.yml
 	kubectl kots install gitpod/${channel} \
 	--skip-rbac-check ${version-flag} ${preflight-flag} \
 					--namespace gitpod --kubeconfig=${KUBECONFIG} \

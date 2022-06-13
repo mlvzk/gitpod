@@ -24,7 +24,7 @@ module "gke" {
   credentials = var.sa_creds
   kubeconfig  = var.kubeconfig
   region      = "europe-west1"
-  zone        = "europe-west1-b"
+  zone        = "europe-west1-d"
 }
 
 module "k3s" {
