@@ -286,23 +286,13 @@ func (tm *tasksManager) Run(ctx context.Context, wg *sync.WaitGroup, successChan
 
 		go func(t *task, term *terminal.Term) {
 			state, err := term.Wait()
-			if state != nil {
-				if state.Success() {
-					t.successChan <- taskSuccessful
-				} else {
-					t.successChan <- taskFailed(state.String())
-				}
-			} else if err != nil {
-				t.successChan <- taskSuccessful
+			if err != nil {
+				t.successChan <- taskFailed(fmt.Sprintf("%s: %s", err.Error(), t.lastOutput))
+				taskLog.WithError(err).WithField("cmdState", state.String()).WithField("lastOutput", t.lastOutput).Warn("task terminal has been closed")
 			} else {
-				msg := "cannot wait for task"
-				if err != nil {
-					msg = err.Error()
-				}
-
-				t.successChan <- taskFailed(fmt.Sprintf("%s: %s", msg, t.lastOutput))
+				t.successChan <- taskSuccessful
+				taskLog.Info("task terminal has been closed sucessfully")
 			}
-			taskLog.Info("task terminal has been closed")
 			tm.setTaskState(t, api.TaskState_closed)
 		}(t, term)
 
