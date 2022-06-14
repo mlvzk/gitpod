@@ -22,9 +22,9 @@ import "./index.css";
 ReactDOM.render(
     <React.StrictMode>
         <UserContextProvider>
-            <AdminContextProvider>
-                <PaymentContextProvider>
-                    <LicenseContextProvider>
+            <LicenseContextProvider>
+                <AdminContextProvider>
+                    <PaymentContextProvider>
                         <TeamsContextProvider>
                             <ProjectContextProvider>
                                 <ThemeContextProvider>
@@ -36,9 +36,9 @@ ReactDOM.render(
                                 </ThemeContextProvider>
                             </ProjectContextProvider>
                         </TeamsContextProvider>
-                    </LicenseContextProvider>
-                </PaymentContextProvider>
-            </AdminContextProvider>
+                    </PaymentContextProvider>
+                </AdminContextProvider>
+            </LicenseContextProvider>
         </UserContextProvider>
     </React.StrictMode>,
     document.getElementById("root"),
