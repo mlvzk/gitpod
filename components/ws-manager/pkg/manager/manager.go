@@ -294,13 +294,7 @@ func (m *Manager) StartWorkspace(ctx context.Context, req *api.StartWorkspaceReq
 			}
 
 			wsType := api.WorkspaceType_name[int32(req.Type)]
-			hist, err := m.metrics.volumeRestoreTimeHistVec.GetMetricWithLabelValues(wsType, req.Spec.Class)
-			if err != nil {
-				log.WithError(err).WithField("type", wsType).Warn("cannot get volume restore time histogram metric")
-			} else if endTime.IsZero() {
-				endTime = time.Now()
-				hist.Observe(endTime.Sub(startTime).Seconds())
-			}
+			m.metrics.histogramObserve(m.metrics.volumeRestoreTimeHistVec, startTime, endTime, wsType, req.Spec.Class)
 		}
 
 		// wait at least 60 seconds before deleting pending pod and trying again due to pending PVC attachment

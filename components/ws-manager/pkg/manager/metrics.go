@@ -211,13 +211,7 @@ func (m *metrics) Register(reg prometheus.Registerer) error {
 
 func (m *metrics) OnWorkspaceStarted(tpe api.WorkspaceType, class string) {
 	nme := api.WorkspaceType_name[int32(tpe)]
-	counter, err := m.totalStartsCounterVec.GetMetricWithLabelValues(nme, class)
-	if err != nil {
-		log.WithError(err).WithField("type", tpe).Warn("cannot get counter for workspace start metric")
-		return
-	}
-
-	counter.Inc()
+	m.counterPlusOne(m.totalStartsCounterVec, nme, class)
 }
 
 func (m *metrics) OnChange(status *api.WorkspaceStatus) {
@@ -244,12 +238,7 @@ func (m *metrics) OnChange(status *api.WorkspaceStatus) {
 		}
 
 		t := status.Metadata.StartedAt.AsTime()
-		hist, err := m.startupTimeHistVec.GetMetricWithLabelValues(tpe, status.Spec.Class)
-		if err != nil {
-			log.WithError(err).WithField("type", tpe).Warn("cannot get startup time histogram metric")
-			return
-		}
-		hist.Observe(time.Since(t).Seconds())
+		m.histogramObserve(m.startupTimeHistVec, t, time.Now(), tpe, status.Spec.Class)
 
 	case api.WorkspacePhase_STOPPED:
 		var reason string
@@ -263,12 +252,7 @@ func (m *metrics) OnChange(status *api.WorkspaceStatus) {
 			reason = "regular-stop"
 		}
 
-		counter, err := m.totalStopsCounterVec.GetMetricWithLabelValues(reason, tpe, status.Spec.Class)
-		if err != nil {
-			log.WithError(err).WithField("reason", reason).Warn("cannot get counter for workspace stops metric")
-			return
-		}
-		counter.Inc()
+		m.counterPlusOne(m.totalStopsCounterVec, reason, tpe, status.Spec.Class)
 		removeFromState = true
 	}
 }
@@ -517,4 +501,31 @@ func (vec *subscriberQueueLevelVec) Collect(ch chan<- prometheus.Metric) {
 
 		ch <- metric
 	}
+}
+
+func (m *metrics) counterPlusOne(cVec *prometheus.CounterVec, lvs ...string) {
+	if cVec == nil {
+		return
+	}
+	c, cErr := cVec.GetMetricWithLabelValues(lvs...)
+	if cErr != nil {
+		log.WithError(cErr).Warn("cannot get counter metric")
+		return
+	}
+	c.Inc()
+}
+
+func (m *metrics) histogramObserve(hVec *prometheus.HistogramVec, startTime, endTime time.Time, lvs ...string) {
+	if hVec == nil {
+		return
+	}
+	h, err := hVec.GetMetricWithLabelValues(lvs...)
+	if err != nil {
+		log.WithError(err).Warn("cannot get histogram metric")
+		return
+	}
+	if endTime.IsZero() {
+		endTime = time.Now()
+	}
+	h.Observe(endTime.Sub(startTime).Seconds())
 }

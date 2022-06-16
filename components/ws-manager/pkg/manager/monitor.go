@@ -775,35 +775,19 @@ func (m *Monitor) initializeWorkspaceContent(ctx context.Context, pod *corev1.Po
 	}
 	wsType := strings.ToUpper(pod.Labels[wsk8s.TypeLabel])
 	wsClass := pod.Labels[workspaceClassLabel]
-	hist, errHist := m.manager.metrics.initializeTimeHistVec.GetMetricWithLabelValues(wsType, wsClass)
-	if errHist != nil {
-		log.WithError(errHist).WithField("type", wsType).Warn("cannot get initialize time histogram metric")
-	} else {
-		hist.Observe(time.Since(t).Seconds())
-	}
+
+	m.manager.metrics.histogramObserve(m.manager.metrics.initializeTimeHistVec, t, time.Now(), wsType, wsClass)
 
 	_, isBackup := initializer.Spec.(*csapi.WorkspaceInitializer_Backup)
-
 	if err != nil {
 		if isBackup {
-			c, cErr := m.manager.metrics.totalRestoreFailureCounterVec.GetMetricWithLabelValues(wsType, wsClass)
-			if cErr != nil {
-				log.WithError(cErr).WithField("type", wsType).Warn("cannot get counter for workspace restore failure counter")
-			} else {
-				c.Inc()
-			}
+			m.manager.metrics.counterPlusOne(m.manager.metrics.totalRestoreFailureCounterVec, wsType, wsClass)
 		}
 
 		return xerrors.Errorf("cannot initialize workspace: %w", err)
 	}
-
 	if isBackup {
-		c, cErr := m.manager.metrics.totalRestoreSuccessCounterVec.GetMetricWithLabelValues(wsType, wsClass)
-		if cErr != nil {
-			log.WithError(cErr).WithField("type", wsType).Warn("cannot get counter for workspace restore success counter")
-		} else {
-			c.Inc()
-		}
+		m.manager.metrics.counterPlusOne(m.manager.metrics.totalRestoreSuccessCounterVec, wsType, wsClass)
 	}
 	return nil
 }
@@ -1024,12 +1008,8 @@ func (m *Monitor) finalizeWorkspaceContent(ctx context.Context, wso *workspaceOb
 					return true, nil, err
 				}
 				readyVolumeSnapshot = true
-				hist, err := m.manager.metrics.volumeSnapshotTimeHistVec.GetMetricWithLabelValues(wsType, wso.Pod.Labels[workspaceClassLabel])
-				if err != nil {
-					log.WithError(err).WithField("type", wsType).Warn("cannot get volume snapshot time histogram metric")
-				} else {
-					hist.Observe(time.Since(volumeSnapshotTime).Seconds())
-				}
+
+				m.manager.metrics.histogramObserve(m.manager.metrics.volumeSnapshotTimeHistVec, volumeSnapshotTime, time.Now(), wsType, wso.Pod.Labels[workspaceClassLabel])
 			}
 			if readyVolumeSnapshot && !markVolumeSnapshotAnnotation {
 				log = log.WithField("VolumeSnapshotContent.Name", pvcVolumeSnapshotContentName)
@@ -1169,40 +1149,25 @@ func (m *Monitor) finalizeWorkspaceContent(ctx context.Context, wso *workspaceOb
 		break
 	}
 
-	hist, err := m.manager.metrics.finalizeTimeHistVec.GetMetricWithLabelValues(wsType, wso.Pod.Labels[workspaceClassLabel])
-	if err != nil {
-		log.WithError(err).WithField("type", wsType).Warn("cannot get finalize time histogram metric")
-	} else {
-		hist.Observe(time.Since(t).Seconds())
-	}
+	m.manager.metrics.histogramObserve(m.manager.metrics.finalizeTimeHistVec, t, time.Now(), wsType, wso.Pod.Labels[workspaceClassLabel])
 
 	disposalStatus = &workspaceDisposalStatus{
 		BackupComplete: true,
 		GitStatus:      gitStatus,
 	}
-	if backupError != nil {
-		c, cErr := m.manager.metrics.totalBackupFailureCounterVec.GetMetricWithLabelValues(wsType, wso.Pod.Labels[workspaceClassLabel])
-		if cErr != nil {
-			log.WithError(cErr).WithField("type", wsType).Warn("cannot get counter for workspace backup failure metric")
-		} else {
-			c.Inc()
-		}
+	if backupError == nil {
+		m.manager.metrics.counterPlusOne(m.manager.metrics.totalBackupSuccessCounterVec, wsType, wso.Pod.Labels[workspaceClassLabel])
+		return
+	}
 
-		if dataloss {
-			disposalStatus.BackupFailure = backupError.Error()
-		} else {
-			// internal errors make no difference to the user experience. The backup still worked, we just messed up some
-			// state management or cleanup. No need to worry the user.
-			log.WithError(backupError).WithFields(wso.GetOWI()).Warn("internal error while disposing workspace content")
-			tracing.LogError(span, backupError)
-		}
+	m.manager.metrics.counterPlusOne(m.manager.metrics.totalBackupFailureCounterVec, wsType, wso.Pod.Labels[workspaceClassLabel])
+	if dataloss {
+		disposalStatus.BackupFailure = backupError.Error()
 	} else {
-		c, cErr := m.manager.metrics.totalBackupSuccessCounterVec.GetMetricWithLabelValues(wsType, wso.Pod.Labels[workspaceClassLabel])
-		if cErr != nil {
-			log.WithError(cErr).WithField("type", wsType).Warn("cannot get counter for workspace backup success counter")
-		} else {
-			c.Inc()
-		}
+		// internal errors make no difference to the user experience. The backup still worked, we just messed up some
+		// state management or cleanup. No need to worry the user.
+		log.WithError(backupError).WithFields(wso.GetOWI()).Warn("internal error while disposing workspace content")
+		tracing.LogError(span, backupError)
 	}
 }
 
