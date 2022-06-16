@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/util/workqueue"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gitpod-io/gitpod/common-go/kubernetes"
@@ -69,6 +70,7 @@ type Monitor struct {
 
 	manager   *Manager
 	eventpool *workpool.EventWorkerPool
+	queue     workqueue.RateLimitingInterface
 	ticker    *time.Ticker
 
 	probeMap     map[string]context.CancelFunc
@@ -105,6 +107,7 @@ func (m *Manager) CreateMonitor() (*Monitor, error) {
 		},
 	}
 	res.eventpool = workpool.NewEventWorkerPool(res.handleEvent)
+	res.queue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Pod")
 	res.act = struct {
 		*Monitor
 		*Manager
