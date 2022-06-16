@@ -316,13 +316,13 @@ func actOnPodEvent(ctx context.Context, m actingManager, status *api.WorkspaceSt
 		// The workspace has been scheduled on the cluster which means that we can start initializing it
 		go func() {
 			err := m.initializeWorkspaceContent(ctx, pod)
-
+			if err == nil {
+				return
+			}
+			// workspace initialization failed, which means the workspace as a whole failed
+			err = m.markWorkspace(ctx, workspaceID, addMark(workspaceExplicitFailAnnotation, err.Error()))
 			if err != nil {
-				// workspace initialization failed, which means the workspace as a whole failed
-				err = m.markWorkspace(ctx, workspaceID, addMark(workspaceExplicitFailAnnotation, err.Error()))
-				if err != nil {
-					log.WithError(err).Warn("was unable to mark workspace as failed")
-				}
+				log.WithError(err).Warn("was unable to mark workspace as failed")
 			}
 		}()
 
@@ -332,13 +332,13 @@ func actOnPodEvent(ctx context.Context, m actingManager, status *api.WorkspaceSt
 		// run for the same workspace multiple times.
 		go func() {
 			err := m.waitForWorkspaceReady(ctx, pod)
-
+			if err == nil {
+				return
+			}
+			// workspace initialization failed, which means the workspace as a whole failed
+			err = m.markWorkspace(ctx, workspaceID, addMark(workspaceExplicitFailAnnotation, err.Error()))
 			if err != nil {
-				// workspace initialization failed, which means the workspace as a whole failed
-				err = m.markWorkspace(ctx, workspaceID, addMark(workspaceExplicitFailAnnotation, err.Error()))
-				if err != nil {
-					log.WithError(err).Warn("was unable to mark workspace as failed")
-				}
+				log.WithError(err).Warn("was unable to mark workspace as failed")
 			}
 		}()
 
@@ -395,11 +395,10 @@ func actOnPodEvent(ctx context.Context, m actingManager, status *api.WorkspaceSt
 				}
 
 				return m.modifyFinalizer(ctx, workspaceID, gitpodFinalizerName, false)
-			} else {
-				// We start finalizing the workspace content only after the container is gone. This way we ensure there's
-				// no process modifying the workspace content as we create the backup.
-				go m.finalizeWorkspaceContent(ctx, wso)
 			}
+			// We start finalizing the workspace content only after the container is gone. This way we ensure there's
+			// no process modifying the workspace content as we create the backup.
+			go m.finalizeWorkspaceContent(ctx, wso)
 		}
 
 	case api.WorkspacePhase_STOPPED:
