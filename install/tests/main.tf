@@ -55,4 +55,5 @@ module "externaldns" {
 
   kubeconfig     = var.kubeconfig
   credentials    = var.dns_sa_creds
+  txt_owner_id   = var.TEST_ID
 }
