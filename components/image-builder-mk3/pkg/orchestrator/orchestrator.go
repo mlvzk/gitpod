@@ -558,10 +558,10 @@ func (o *Orchestrator) getAbsoluteImageRef(ctx context.Context, ref string, allo
 
 	ref, err = o.RefResolver.Resolve(ctx, ref, resolve.WithAuthentication(auth))
 	if xerrors.Is(err, resolve.ErrNotFound) {
-		return "", status.Error(codes.NotFound, "cannot resolve image")
+		return "", status.Error(codes.NotFound, "cannot resolve image: ErrNotFound")
 	}
 	if xerrors.Is(err, resolve.ErrUnauthorized) {
-		return "", status.Error(codes.Unauthenticated, "cannot resolve image")
+		return "", status.Error(codes.Unauthenticated, "cannot resolve image: ErrUnauthorized")
 	}
 	if err != nil {
 		return "", status.Errorf(codes.Internal, "cannot resolve image: %v", err)

@@ -56,7 +56,9 @@ func (sr *StandaloneRefResolver) Resolve(ctx context.Context, ref string, opts .
 	if sr.ResolverFactory == nil {
 		r = dockerremote.NewResolver(dockerremote.ResolverOptions{
 			Authorizer: dockerremote.NewDockerAuthorizer(dockerremote.WithAuthCreds(func(host string) (username, password string, err error) {
+				log.WithField("host", host).Debug("standalone resolving for host")
 				if options.Auth == nil {
+					log.Debug("standalone options auth is nil")
 					return
 				}
 
@@ -64,6 +66,7 @@ func (sr *StandaloneRefResolver) Resolve(ctx context.Context, ref string, opts .
 			})),
 		})
 	} else {
+		log.Debug("standalone resolving with factory")
 		r = sr.ResolverFactory()
 	}
 
@@ -181,6 +184,7 @@ func WithAuthentication(auth *auth.Authentication) DockerRefResolverOption {
 
 func getOptions(o []DockerRefResolverOption) *opts {
 	var res opts
+	log.WithField("count", len(o)).Debug("docker resolver option count")
 	for _, opt := range o {
 		opt(&res)
 	}
@@ -234,11 +238,14 @@ func (pr *PrecachingRefResolver) StartCaching(ctx context.Context, interval time
 				}
 
 				opts = append(opts, WithAuthentication(auth))
+			} else {
+				log.WithField("candidate", c).Debug("Precache resolver auth is nil")
 			}
 
+			log.WithField("count", len(opts)).Info("Precache resolver option count")
 			res, err := pr.Resolver.Resolve(ctx, c, opts...)
 			if err != nil {
-				log.WithError(err).WithField("ref", c).Warn("unable to precache reference")
+				log.WithError(err).WithField("ref", c).Warn("unable to precache reference: resolve error")
 				continue
 			}
 

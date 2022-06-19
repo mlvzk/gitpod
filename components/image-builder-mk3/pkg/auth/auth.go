@@ -48,8 +48,10 @@ type DockerConfigFileAuth struct {
 
 // Authenticate attempts to provide an encoded authentication string for Docker registry access
 func (a *DockerConfigFileAuth) Authenticate(registry string) (auth *Authentication, err error) {
+	log.WithField("registry", registry).Debug("Getting authentication string for registry")
 	ac, err := a.C.GetAuthConfig(registry)
 	if err != nil {
+		log.WithField("registry", registry).WithError(xerrors.Errorf("cannot get auth config: %w", err)).Error("cannot get auth config.")
 		return nil, err
 	}
 
@@ -155,6 +157,7 @@ func (r Resolver) ResolveRequestAuth(auth *api.BuildRegistryAuth) (authFor Allow
 // GetAuthFor computes the base64 encoded auth format for a Docker image pull/push
 func (a AllowedAuthFor) GetAuthFor(auth RegistryAuthenticator, refstr string) (res *Authentication, err error) {
 	if auth == nil {
+		log.Debug("auth is nil")
 		return
 	}
 
