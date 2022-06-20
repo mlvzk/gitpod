@@ -151,7 +151,7 @@ pod:
       args+=( "-namespace=default" )
       [[ "$USERNAME" != "" ]] && args+=( "-username=$USERNAME" )
 
-      WK_TEST_LIST=(/workspace/test/tests/components/content-service /workspace/test/tests/components/image-builder /workspace/test/tests/components/ws-daemon /workspace/test/tests/components/ws-manager /workspace/test/tests/workspace)
+      WK_TEST_LIST=(/workspace/test/tests/workspace)
       for TEST_PATH in "${WK_TEST_LIST[@]}"
       do
           TEST_NAME=$(basename "${TEST_PATH}")
