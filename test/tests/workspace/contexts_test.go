@@ -103,6 +103,7 @@ func runContextTests(t *testing.T, tests []ContextTest) {
 		WithLabel("component", "server").
 		Assess("should run context tests", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 			for _, test := range tests {
+				test := test
 				t.Run(test.ContextURL, func(t *testing.T) {
 					if test.Skip {
 						t.SkipNow()
