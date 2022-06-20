@@ -90,11 +90,11 @@ pod:
           BODY="{\"blocks\":[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"${title}\"},\"accessory\":{\"type\":\"button\",\"text\":{\"type\":\"plain_text\",\"text\":\":werft: Go to Werft\",\"emoji\":true},\"value\":\"click_me_123\",\"url\":\"${werftJobUrl}\",\"action_id\":\"button-action\"}}]}"
         fi
 
-        curl -X POST \
-          -H 'Content-type: application/json' \
-          -d "${BODY}" \
-          "https://hooks.slack.com/${SLACK_NOTIFICATION_PATH}"
-        werft log result "slack notification" "${PIPESTATUS[0]}"
+        # curl -X POST \
+        #   -H 'Content-type: application/json' \
+        #   -d "${BODY}" \
+        #   "https://hooks.slack.com/${SLACK_NOTIFICATION_PATH}"
+        # werft log result "slack notification" "${PIPESTATUS[0]}"
 
         werft log phase "clean up" "clean up"
         git push origin :"${BRANCH}" | werft log slice "clean up"
