@@ -129,7 +129,11 @@ func runContextTests(t *testing.T, tests []ContextTest) {
 					}
 					defer stopWS(false) // we do not wait for stopped here as it does not matter for this test case and speeds things up
 
-					rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(), integration.WithInstanceID(nfo.LatestInstance.ID))
+					rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(),
+						integration.WithInstanceID(nfo.LatestInstance.ID),
+						integration.WithContainer("workspace"),
+						integration.WithWorkspacekitLift(true),
+					)
 					if err != nil {
 						t.Fatal(err)
 					}

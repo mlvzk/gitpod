@@ -79,7 +79,11 @@ func TestRegularWorkspaceTasks(t *testing.T) {
 						_ = integration.DeleteWorkspace(ctx, api, nfo.Req.Id)
 					})
 
-					rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(), integration.WithInstanceID(nfo.Req.Id))
+					rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(),
+						integration.WithInstanceID(nfo.Req.Id),
+						integration.WithContainer("workspace"),
+						integration.WithWorkspacekitLift(true),
+					)
 					if err != nil {
 						t.Fatalf("unexpected error instrumenting workspace: %v", err)
 					}

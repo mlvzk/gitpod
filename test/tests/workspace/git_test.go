@@ -149,10 +149,13 @@ func TestGitActions(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-
 					defer stopWS(false)
 
-					rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(), integration.WithInstanceID(nfo.LatestInstance.ID))
+					rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(),
+						integration.WithInstanceID(nfo.LatestInstance.ID),
+						integration.WithContainer("workspace"),
+						integration.WithWorkspacekitLift(true),
+					)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -199,7 +202,7 @@ func TestGitLFSSupport(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer stopWs(true)
+			defer stopWs(false)
 
 			return ctx
 		}).

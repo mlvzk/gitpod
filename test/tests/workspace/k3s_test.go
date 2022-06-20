@@ -40,7 +40,11 @@ func TestK3s(t *testing.T) {
 				}
 			}()
 
-			rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(), integration.WithInstanceID(ws.Req.Id), integration.WithWorkspacekitLift(true))
+			rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(),
+				integration.WithInstanceID(ws.Req.Id),
+				integration.WithContainer("workspace"),
+				integration.WithWorkspacekitLift(true),
+			)
 			if err != nil {
 				t.Fatalf("unexpected error instrumenting workspace: %v", err)
 			}

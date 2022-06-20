@@ -89,6 +89,8 @@ func TestBackup(t *testing.T) {
 
 			rsa, closer, err = integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(),
 				integration.WithInstanceID(ws.Req.Id),
+				integration.WithContainer("workspace"),
+				integration.WithWorkspacekitLift(true),
 			)
 			if err != nil {
 				t.Fatal(err)

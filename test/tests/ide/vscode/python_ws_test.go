@@ -105,7 +105,11 @@ func TestPythonExtWorkspace(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(), integration.WithInstanceID(nfo.LatestInstance.ID), integration.WithWorkspacekitLift(true))
+			rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(),
+				integration.WithInstanceID(nfo.LatestInstance.ID),
+				integration.WithContainer("workspace"),
+				integration.WithWorkspacekitLift(true),
+			)
 			if err != nil {
 				t.Fatal(err)
 			}

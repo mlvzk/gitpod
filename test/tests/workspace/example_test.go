@@ -42,9 +42,13 @@ func TestWorkspaceInstrumentation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer stopWs(true)
+			defer stopWs(false)
 
-			rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(), integration.WithInstanceID(nfo.LatestInstance.ID))
+			rsa, closer, err := integration.Instrument(integration.ComponentWorkspace, "workspace", cfg.Namespace(), kubeconfig, cfg.Client(),
+				integration.WithInstanceID(nfo.LatestInstance.ID),
+				integration.WithContainer("workspace"),
+				integration.WithWorkspacekitLift(true),
+			)
 			if err != nil {
 				t.Fatal(err)
 			}
