@@ -71,7 +71,10 @@ async function issueCertificate(werft: Werft, config: JobConfig) {
 }
 
 function decideHarvesterVMCreation(werft: Werft, config: JobConfig) {
-    createVM(werft, config)
+    if (!VM.vmExists({ name: config.previewEnvironment.destname }) || config.cleanSlateDeployment)
+    {
+        createVM(werft, config)
+    }
     applyLoadBalancer({ name: config.previewEnvironment.destname })
     werft.done(prepareSlices.BOOT_VM)
 }
