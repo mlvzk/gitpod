@@ -15,8 +15,9 @@ import {
     WORKSPACE_TIMEOUT_DEFAULT_LONG,
     WORKSPACE_TIMEOUT_EXTENDED,
     WORKSPACE_TIMEOUT_EXTENDED_ALT,
+    Workspace,
 } from "@gitpod/gitpod-protocol";
-import { ProjectDB, TermsAcceptanceDB, UserDB } from "@gitpod/gitpod-db/lib";
+import { CostCenterDB, ProjectDB, TermsAcceptanceDB, UserDB } from "@gitpod/gitpod-db/lib";
 import { HostContextProvider } from "../auth/host-context-provider";
 import { log } from "@gitpod/gitpod-protocol/lib/util/logging";
 import { Config } from "../config";
@@ -64,6 +65,7 @@ export class UserService {
     @inject(TermsAcceptanceDB) protected readonly termsAcceptanceDb: TermsAcceptanceDB;
     @inject(TermsProvider) protected readonly termsProvider: TermsProvider;
     @inject(ProjectDB) protected readonly projectDb: ProjectDB;
+    @inject(CostCenterDB) protected readonly costCenterDb: CostCenterDB;
 
     /**
      * Takes strings in the form of <authHost>/<authName> and returns the matching User
@@ -207,21 +209,20 @@ export class UserService {
     }
 
     /**
-     * Identifies the team to which a workspace instance's running time should be attributed to
+     * Identifies the team or user to which a workspace instance's running time should be attributed to
      * (e.g. for usage analytics or billing purposes).
-     * If no specific team is identified, the usage will be attributed to the user instead (default).
      *
      * @param user
      * @param projectId
      */
-    async getWorkspaceUsageAttributionTeamId(user: User, projectId?: string): Promise<string | undefined> {
-        if (!projectId) {
-            // No project -- attribute to the user.
+    async getCostCenterId(user: User, workspace: Workspace): Promise<string | undefined> {
+        if (!workspace.projectId) {
+            // No project -- no cost center.
             return undefined;
         }
-        const project = await this.projectDb.findProjectById(projectId);
+        const project = await this.projectDb.findProjectById(workspace.projectId);
         if (!project?.teamId) {
-            // The project doesn't exist, or it isn't owned by a team -- attribute to the user.
+            // The project doesn't exist, or it isn't owned by a team -- no cost center.
             return undefined;
         }
         // Attribute workspace usage to the team that currently owns this project.

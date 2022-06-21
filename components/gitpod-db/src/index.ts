@@ -39,3 +39,4 @@ export * from "./typeorm/entity/db-account-entry";
 export * from "./project-db";
 export * from "./team-db";
 export * from "./installation-admin-db";
+export * from "./cost-center-db";

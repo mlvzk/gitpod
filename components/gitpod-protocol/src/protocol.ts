@@ -1350,3 +1350,7 @@ export interface Terms {
     readonly content: string;
     readonly formElements?: object;
 }
+
+export interface CostCenter {
+    readonly id: string;
+}

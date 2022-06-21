@@ -722,7 +722,7 @@ export class WorkspaceStarter {
             configuration.featureFlags = featureFlags;
         }
 
-        const attributedTeamId = await this.userService.getWorkspaceUsageAttributionTeamId(user, workspace.projectId);
+        const costCenterId = await this.userService.getCostCenterId(user, workspace);
 
         const now = new Date().toISOString();
         const instance: WorkspaceInstance = {
@@ -737,7 +737,7 @@ export class WorkspaceStarter {
                 phase: "preparing",
             },
             configuration,
-            attributedTeamId,
+            costCenterId,
         };
         if (WithReferrerContext.is(workspace.context)) {
             this.analytics.track({
