@@ -62,31 +62,18 @@ function configureStaticClustersAccess() {
 }
 
 async function issueCertificate(werft: Werft, config: JobConfig) {
-    const certName = config.withVM ? `harvester-${previewNameFromBranchName(config.repository.branch)}` : `staging-${previewNameFromBranchName(config.repository.branch)}`
-    const domain = config.withVM ? `${config.previewEnvironment.destname}.preview.gitpod-dev.com` : `${config.previewEnvironment.destname}.staging.gitpod-dev.com`;
+    const certName = `harvester-${previewNameFromBranchName(config.repository.branch)}`
+    const domain = `${config.previewEnvironment.destname}.preview.gitpod-dev.com`;
 
     werft.log(prepareSlices.ISSUE_CERTIFICATES, prepareSlices.ISSUE_CERTIFICATES)
-    await issueMetaCerts(werft, certName, "certs", domain, config.withVM, prepareSlices.ISSUE_CERTIFICATES)
+    await issueMetaCerts(werft, certName, "certs", domain, prepareSlices.ISSUE_CERTIFICATES)
     werft.done(prepareSlices.ISSUE_CERTIFICATES)
 }
 
 function decideHarvesterVMCreation(werft: Werft, config: JobConfig) {
-    if (shouldCreateVM(config)) {
-        createVM(werft, config)
-    } else {
-        werft.currentPhaseSpan.setAttribute("preview.created_vm", false)
-    }
-    if (config.withVM) {
-        applyLoadBalancer({ name: config.previewEnvironment.destname })
-    }
+    createVM(werft, config)
+    applyLoadBalancer({ name: config.previewEnvironment.destname })
     werft.done(prepareSlices.BOOT_VM)
-}
-
-function shouldCreateVM(config: JobConfig) {
-    return config.withVM && (
-        !VM.vmExists({ name: config.previewEnvironment.destname }) ||
-        config.cleanSlateDeployment
-    )
 }
 
 // createVM only triggers the VM creation.
