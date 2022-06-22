@@ -561,7 +561,16 @@ var ring1Cmd = &cobra.Command{
 			}
 		}()
 
-		stopHook, err := startInfoService("/.supervisor")
+		log.Infof("Root is %s", ring2Root)
+		socketPath := filepath.Join(ring2Root, ".supervisor")
+		if _, err = os.Stat(socketPath); os.IsNotExist(err) {
+			if err := os.MkdirAll(socketPath, 0644); err != nil {
+				log.Errorf("failed to create dir %v", err)
+			}
+		}
+		os.WriteFile(filepath.Join(ring2Root, "marker"), []byte("marker"), 0644)
+
+		stopHook, err := startInfoService(socketPath)
 		if err != nil {
 			// workspace info is not critical, so we will not fail workspace start
 			log.Error("failed to start workspace info service")
