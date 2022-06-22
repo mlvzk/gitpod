@@ -995,6 +995,45 @@ func (wbs *InWorkspaceServiceServer) unPrepareForUserNS() error {
 	return nil
 }
 
+func (wbs *InWorkspaceServiceServer) WorkspaceInfo(ctx context.Context, req *api.WorkspaceInfoRequest) (*api.WorkspaceInfoResponse, error) {
+	log.Info("Received workspace info request")
+	rt := wbs.Uidmapper.Runtime
+	if rt == nil {
+		return nil, status.Errorf(codes.FailedPrecondition, "not connected to container runtime")
+	}
+	wscontainerID, err := rt.WaitForContainer(ctx, wbs.Session.InstanceID)
+	if err != nil {
+		log.WithError(err).WithFields(wbs.Session.OWI()).Error("EvacuateCGroup: cannot find workspace container")
+		return nil, status.Errorf(codes.NotFound, "cannot find workspace container")
+	}
+
+	_, err = rt.ContainerCGroupPath(ctx, wscontainerID)
+	if err != nil {
+		log.WithError(err).WithFields(wbs.Session.OWI()).Error("EvacuateCGroup: cannot find workspace container CGroup path")
+		return nil, status.Errorf(codes.NotFound, "cannot find workspace container cgroup")
+	}
+
+	_, err = cgroups.IsUnifiedCgroupSetup()
+	if err != nil {
+		// log error and do not expose it to the user
+		log.WithError(err).Error("could not determine cgroup setup")
+		return nil, status.Errorf(codes.FailedPrecondition, "could not determine cgroup setup")
+	}
+
+	return &api.WorkspaceInfoResponse{
+		Resources: &api.Resources{
+			Cpu: &api.Cpu{
+				Limit: 100000,
+				Used:  80000,
+			},
+			Memory: &api.Memory{
+				Limit: 100000,
+				Used:  80000,
+			},
+		},
+	}, nil
+}
+
 type ratelimitingInterceptor map[string]ratelimit
 
 type ratelimit struct {
