@@ -216,7 +216,6 @@ async function deployToDevWithInstaller(werft: Werft, jobConfig: JobConfig, depl
 
     // clean environment state
     try {
-
         werft.log(installerSlices.CLEAN_ENV_STATE, "Clean the preview environment slate...");
         createNamespace(namespace, deploymentKubeconfig, metaEnv({ slice: installerSlices.CLEAN_ENV_STATE }));
         werft.done(installerSlices.CLEAN_ENV_STATE);

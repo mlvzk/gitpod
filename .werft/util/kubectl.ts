@@ -134,7 +134,7 @@ export function createNamespace(namespace: string, kubeconfig: string, shellOpts
 
     // (re-)create namespace
     [
-        `kubectl --kubeconfig ${kubeconfig} create namespace ${namespace}`,
+        `kubectl --kubeconfig ${kubeconfig} create namespace ${namespace} --dry-run=client -o yaml | kubectl --kubeconfig ${kubeconfig} apply -f -`,
         `kubectl --kubeconfig ${kubeconfig} patch namespace ${namespace} --patch '{"metadata": {"labels": {"${IS_PREVIEW_APP_LABEL}": "true"}}}'`
     ].forEach((cmd) => exec(cmd, shellOpts));
 };
