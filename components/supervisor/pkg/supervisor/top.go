@@ -15,21 +15,35 @@ import (
 
 	linuxproc "github.com/c9s/goprocinfo/linux"
 	"github.com/gitpod-io/gitpod/supervisor/api"
+	daemonapi "github.com/gitpod-io/gitpod/ws-daemon/api"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 // Top provides workspace resources status information.
 func Top(ctx context.Context) (*api.ResourcesStatusResponse, error) {
-	memory, err := resolveMemoryStatus()
+	const socketFN = "info.sock"
+
+	conn, err := grpc.DialContext(ctx, "unix://"+socketFN, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
-	cpu, err := resolveCPUStatus()
+
+	client := daemonapi.NewWorkspaceInfoServiceClient(conn)
+	resp, err := client.WorkspaceInfo(ctx, &daemonapi.WorkspaceInfoRequest{})
 	if err != nil {
 		return nil, err
 	}
+
 	return &api.ResourcesStatusResponse{
-		Memory: memory,
-		Cpu:    cpu,
+		Memory: &api.ResourceStatus{
+			Limit: resp.Resources.Memory.Limit,
+			Used:  resp.Resources.Memory.Used,
+		},
+		Cpu: &api.ResourceStatus{
+			Limit: resp.Resources.Cpu.Limit,
+			Used:  resp.Resources.Cpu.Used,
+		},
 	}, nil
 }
 
