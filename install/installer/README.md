@@ -142,6 +142,69 @@ defined in the spec and so will be deleted shortly after the jobs have run.
 
 # Advanced topics
 
+## Custom Annotations, Environment Variables and Labels
+
+There are times when it is desirable for custom annotations, environment
+variables and labels should be added to an installation.
+
+### Installer Config
+
+This can be added to the root of the `gitpod.config.yaml`. If nothing is passed in,
+no custom parameters are added in.
+
+Annotations are structured in the format `components.annotations.<kind>.<name>`. The
+`kind` is the given Kubernetes "Kind", all converted to lowercase (eg, `service`,
+`daemonset`). The `name` is the given name of the Kubernetes resource (eg, `ws-daemon`,
+`server`).
+
+Environment variables are only injected into resources that support environment variables
+(ie, pods).
+
+In both cases, these may override the annotations/envvars set by the system so these
+should be used with caution.
+
+```yaml
+components:
+  annotations:
+    '*':
+      '*':
+        key1: value1 # annotation added to all components
+    service:
+      '*':
+        key2: value2 # annotation added to all service components
+    '*':
+      server:
+        key3: value3 # annotation added to all components called "server"
+    service:
+      proxy:
+        key4: value4 # annotation added to proxy service
+  envvars:
+    '*':
+      env1: value1 # envvar added to all pods
+    ws-daemon:
+      env2: value2 # envvar added to the "ws-daemon" pods
+  labels: {} # Definition as-per "annotations"
+```
+
+In the event of a conflict, they will be overridden in order of precedence from least
+to most specific - eg, `service.ws-manager.key` would override `*.ws-manager.key`,
+and that would override `*.*.key`.
+
+This will also allow for overriding of keys that we set. Whilst this may seem strange,
+it's plausible that a customer may wish to remove an annotation that we set - it's
+unlikely, but a Gitpod-specified annotation may conflict for a customer's implementation.
+
+If an empty value is given (eg, `key: ""`), this will delete any key set from what's passed
+into the `annotations/envvars/labels`.
+
+In the event that a Kubernetes resource has multiple annotations (eg, a `Deployment` has
+it on the `Deployment` spec and the `Pod` spec), the same annotation will be applied
+for both and can be overridden with the parent kind (in this example, `deployment`). Only
+Gitpod-generated annotations (eg, `gitpod.io/checksum_config`) will be applied to the
+spec that they're required on.
+
+Labels will be identical to `annotations`, but with the key `labels`
+
 ## Post-processing the YAML
 
 > Here be dragons.
