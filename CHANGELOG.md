@@ -1,6 +1,18 @@
 # Change Log
 
 ## June 2022
+- [installer]: set minio azure image to last supported version ([#10717](https://github.com/gitpod-io/gitpod/pull/10717)) - [@MrSimonEmms](https://github.com/MrSimonEmms)
+- Change the default directory of ssh connections ([#10736](https://github.com/gitpod-io/gitpod/pull/10736)) - [@mustard-mh](https://github.com/mustard-mh)
+- Remove env print after connect via ssh ([#10736](https://github.com/gitpod-io/gitpod/pull/10736)) - [@mustard-mh](https://github.com/mustard-mh)
+- Add graceful welcome message for users after ssh connected ([#10736](https://github.com/gitpod-io/gitpod/pull/10736)) - [@mustard-mh](https://github.com/mustard-mh)
+- [kots]: allow multiple docker pull secrets ([#10685](https://github.com/gitpod-io/gitpod/pull/10685)) - [@MrSimonEmms](https://github.com/MrSimonEmms)
+- update env to use werft grpc ([#10730](https://github.com/gitpod-io/gitpod/pull/10730)) - [@liam-j-bennett](https://github.com/liam-j-bennett)
+- add /debug/version endpoint to ws-manager-bridge ([#10426](https://github.com/gitpod-io/gitpod/pull/10426)) - [@geropl](https://github.com/geropl)
+- Fix I/O limiting when cgroups v2 is enabled ([#10669](https://github.com/gitpod-io/gitpod/pull/10669)) - [@aledbf](https://github.com/aledbf)
+- Fixed quota size regex allowing false positives ([#10744](https://github.com/gitpod-io/gitpod/pull/10744)) - [@CuriousCorrelation](https://github.com/CuriousCorrelation)
+- [preview-install] Add user-friendly output ([#10695](https://github.com/gitpod-io/gitpod/pull/10695)) - [@Pothulapati](https://github.com/Pothulapati)
+- Update description of `gp timeout` ([#10723](https://github.com/gitpod-io/gitpod/pull/10723)) - [@mustard-mh](https://github.com/mustard-mh)
+- [SSH Gateway] remove priavte key requirement when ownerToken is provide ([#10704](https://github.com/gitpod-io/gitpod/pull/10704)) - [@iQQBot](https://github.com/iQQBot)
 - [dev] Use gke-gcloud-auth-plugin for kubectl ([#10687](https://github.com/gitpod-io/gitpod/pull/10687)) - [@andrew-farries](https://github.com/andrew-farries)
 - [self-hosted] Add new local preview installation method ([#10532](https://github.com/gitpod-io/gitpod/pull/10532)) - [@Pothulapati](https://github.com/Pothulapati)
 - Added action to delete all inactive workspaces ([#10676](https://github.com/gitpod-io/gitpod/pull/10676)) - [@svenefftinge](https://github.com/svenefftinge)
