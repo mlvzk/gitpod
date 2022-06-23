@@ -50,8 +50,8 @@ add-ns-record:
 	terraform apply -target=module.add_gcp_nameservers  -var kubeconfig=${KUBECONFIG} --auto-approve
 
 .PHONY:
-## azure-issuer: Creates a cluster issuer with AD access
-azure-issuer:
+## cluster-issuer: Creates a cluster issuer for the correspondign provider
+cluster-issuer:
 	terraform init --upgrade && \
 	terraform workspace new $(TF_VAR_TEST_ID) || terraform workspace select $(TF_VAR_TEST_ID) && \
 	terraform apply -target=module.azure-issuer  -var kubeconfig=${KUBECONFIG} --auto-approve
@@ -78,12 +78,12 @@ managed-dns: check-env-sub-domain
 	terraform apply -target=module.clouddns-externaldns -var kubeconfig=${KUBECONFIG} --auto-approve && \
     kubectl --kubeconfig=${KUBECONFIG} apply -f ${CLUSTER_ISSUER_CLOUD_DNS}
 
-provider ?= "azure"
+cloud ?= "azure"
 .PHONY:
 ## external-dns: Installs external-dns
 external-dns: check-env-sub-domain
 	terraform workspace select $(TF_VAR_TEST_ID) && \
-	terraform apply -target=module.externaldns -var provider=${provider} -var kubeconfig=${KUBECONFIG} --auto-approve
+	terraform apply -target=module.$(cloud)-externaldns -var kubeconfig=${KUBECONFIG} --auto-approve
 
 .PHONY:
 ## get-kubeconfig: Returns KUBECONFIG of a just created cluster
@@ -117,19 +117,6 @@ get-config-gcp-db:
 	envsubst '$${TF_VAR_TEST_ID}' < tmp_4_config.yml > tmp_5_config.yml
 	yq m -i tmp_config.yml tmp_5_config.yml
 
-get-config-azure-storage:
-	export PASSWORD=$$(terraform output -json storage | yq r - 'password') && \
-	export USERNAME=$$(terraform output -json storage | yq r - 'username') && \
-	envsubst < ./manifests/kots-config-azure-storage.yaml > tmp_2_config.yml
-	yq m -i tmp_config.yml tmp_2_config.yml
-
-get-config-azure-db:
-	export DBHOST=$$(terraform output -json database | yq r - 'host') && \
-	export DBPASS=$$(terraform output -json database | yq r - 'password') && \
-	export DBUSER=$$(terraform output -json database | yq r - 'username') && \
-	envsubst < ./manifests/kots-config-azure-db.yaml > tmp_2_config.yml
-	yq m -i tmp_config.yml tmp_2_config.yml
-
 get-config-azure-registry:
 	export SERVER=$$(terraform output -json registry | yq r - 'server') && \
 	export PASSWORD=$$(terraform output -json registry | yq r - 'password') && \
@@ -148,13 +135,6 @@ get-config-azure-db:
 	export DBPASS=$$(terraform output -json database | yq r - 'password') && \
 	export DBUSER=$$(terraform output -json database | yq r - 'username') && \
 	envsubst < ./manifests/kots-config-azure-db.yaml > tmp_2_config.yml
-	yq m -i tmp_config.yml tmp_2_config.yml
-
-get-config-azure-registry:
-	export SERVER=$$(terraform output -json registry | yq r - 'server') && \
-	export PASSWORD=$$(terraform output -json registry | yq r - 'password') && \
-	export USERNAME=$$(terraform output -json registry | yq r - 'username') && \
-	envsubst < ./manifests/kots-config-azure-registry.yaml > tmp_2_config.yml
 	yq m -i tmp_config.yml tmp_2_config.yml
 
 storage ?= incluster
@@ -203,30 +183,30 @@ kots-uprgade:
 	@echo "Upgrade gitpod KOTS app to latest"
 	kubectl kots upstream upgrade --kubeconfig=${KUBECONFIG} gitpod -n gitpod --deploy
 
-cleanup: destroy-gcp-externaldns destroy-gcpns destroy-aks-edns destroy-aks-issuer destroy-certmanager destroy-clusters
+cloud ?= gcp
+cleanup: destroy-$(cloud)
 
 select-workspace:
 	terraform workspace select $(TF_VAR_TEST_ID)
 
-destroy-gcp-externaldns: select-workspace
+destroy-gcp: select-workspace
 	ls ${KUBECONFIG} && terraform destroy -target=module.clouddns-externaldns -var kubeconfig=${KUBECONFIG} --auto-approve || echo "No kubeconfig file"
-
-destroy-certmanager: select-workspace
 	ls ${KUBECONFIG} && terraform destroy -target=module.certmanager -var kubeconfig=${KUBECONFIG} --auto-approve || echo "No kubeconfig file"
-
-destroy-gcpns: select-workspace
-	terraform destroy -target=module.add_gcp_nameservers -var kubeconfig=${KUBECONFIG} --auto-approve
-
-destroy-edns: select-workspace
-	ls ${KUBECONFIG} && terraform destroy -target=module.externaldns -var kubeconfig=${KUBECONFIG} --auto-approve || echo "No kubeconfig file"
-
-destroy-aks-issuer: select-workspace
-	ls ${KUBECONFIG} && terraform destroy -target=module.azure-issuer -var kubeconfig=${KUBECONFIG} --auto-approve || echo "No kubeconfig file"
-
-destroy-clusters: select-workspace
-	terraform destroy -target=module.gke -var kubeconfig=${KUBECONFIG} --auto-approve
-	terraform destroy -target=module.eks -var kubeconfig=${KUBECONFIG} --auto-approve
 	terraform destroy -target=module.k3s -var kubeconfig=${KUBECONFIG} --auto-approve
+	terraform destroy -target=module.gke -var kubeconfig=${KUBECONFIG} --auto-approve
+
+destroy-aws: select-workspace
+	terraform destroy -target=module.aws-add-dns-record -var kubeconfig=${KUBECONFIG} --auto-approve
+	ls ${KUBECONFIG} && terraform destroy -target=module.aws-issuer -var kubeconfig=${KUBECONFIG} --auto-approve || echo "No kubeconfig file"
+	ls ${KUBECONFIG} && terraform destroy -target=module.aws-externaldns -var kubeconfig=${KUBECONFIG} --auto-approve || echo "No kubeconfig file"
+	ls ${KUBECONFIG} && terraform destroy -target=module.certmanager -var kubeconfig=${KUBECONFIG} --auto-approve || echo "No kubeconfig file"
+	terraform destroy -target=module.eks -var kubeconfig=${KUBECONFIG} --auto-approve
+
+destroy-azure: select-workspace
+	ls ${KUBECONFIG} && terraform destroy -target=module.azure-issuer -var kubeconfig=${KUBECONFIG} --auto-approve || echo "No kubeconfig file"
+	terraform destroy -target=module.azure-add-dns-record -var kubeconfig=${KUBECONFIG} --auto-approve
+	ls ${KUBECONFIG} && terraform destroy -target=module.azure-externaldns -var kubeconfig=${KUBECONFIG} --auto-approve || echo "No kubeconfig file"
+	ls ${KUBECONFIG} && terraform destroy -target=module.certmanager -var kubeconfig=${KUBECONFIG} --auto-approve || echo "No kubeconfig file"
 	[ -z "$$ARM_SUBSCRIPTION_ID" ] || terraform destroy -target=module.aks -var kubeconfig=${KUBECONFIG} --auto-approve
 
 get-results:

@@ -1,7 +1,7 @@
 variable settings {}
 variable domain_name { default = "test"}
 variable kubeconfig { default = "conf"}
-variable provider { default = "azure"}
+variable txt_owner_id { default = "nightly-test" }
 
 provider "helm" {
   kubernetes {
@@ -21,10 +21,9 @@ resource "helm_release" "external_dns" {
     name  = "domainFilters[0]"
     value = var.domain_name
   }
-
   set {
-    name  = "provider"
-    value = var.provider
+    name = "txt-owner-id"
+    value = var.txt_owner_id
   }
 
   dynamic "set" {
@@ -34,37 +33,4 @@ resource "helm_release" "external_dns" {
       value = setting.value["value"]
     }
   }
-  # set {
-  #   name  = "azure.userAssignedIdentityID"
-  #   value = var.settings["azure.userAssignedIdentityID"]
-  # }
-
-  # set {
-  #   name  = "azure.useManagedIdentityExtension"
-  #   value = var.settings["azure.useManagedIdentityExtension"]
-  # }
-
-  # set {
-  #   name  = "azure.tenantId"
-  #   value = var.settings["azure.tenantId"]
-  # }
-
-  # set {
-  #   name  = "azure.subscriptionId"
-  #   value = var.settings["azure.subscriptionId"]
-  # }
-
-  # set {
-  #   name  = "azure.resourceGroup"
-  #   value = var.settings["azure.resourceGroup"]
-  # }
-
-  # TODO Add tags using dynamic block
-  # https://github.com/hashicorp/terraform/issues/22340
-  #  dynamic "set" {
-  #    for_each = var.tags
-  #    iterator = "tag"
-  #    name     = "podLabels[${index(var.tags, tag.key)}]"
-  #    value    = tag.value
-  #  }
 }

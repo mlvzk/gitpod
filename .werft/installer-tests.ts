@@ -214,7 +214,7 @@ const INFRA_PHASES: { [name: string]: InfraConfig } = {
     },
     DESTROY: {
         phase: "destroy",
-        makeTarget: "cleanup",
+        makeTarget: `cleanup cloud=${cloud}`,
         description: "Destroy the created infrastucture",
     },
     RESULTS: {
@@ -279,7 +279,10 @@ function cleanup() {
     const phase = "destroy-infrastructure";
     werft.phase(phase, "Destroying all the created resources");
 
-    const response = exec(`make -C ${makefilePath} cleanup`, { slice: "run-terrafrom-destroy", dontCheckRc: true });
+    const response = exec(`make -C ${makefilePath} cleanup cloud=${cloud}`, {
+        slice: "run-terrafrom-destroy",
+        dontCheckRc: true,
+    });
 
     // if the destroy command fail, we check if any resources are pending to be removed
     // if nothing is yet to be cleaned, we return with success
