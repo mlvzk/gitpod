@@ -1025,7 +1025,15 @@ func startInfoService(socketDir string) (func(), error) {
 		socket: sckt,
 	}
 
-	infoSvc.server = grpc.NewServer()
+	limiter := common_grpc.NewRatelimitingInterceptor(
+		map[string]common_grpc.RateLimit{
+			"iws.WorkspaceInfoService/WorkspaceInfo": {
+				RefillInterval: 1500,
+				BucketSize:     4,
+			},
+		})
+
+	infoSvc.server = grpc.NewServer(grpc.ChainUnaryInterceptor(limiter.UnaryInterceptor()))
 	api.RegisterWorkspaceInfoServiceServer(infoSvc.server, &infoSvc)
 	go func() {
 		err := infoSvc.server.Serve(sckt)

@@ -22,17 +22,17 @@ import (
 
 // Top provides workspace resources status information.
 func Top(ctx context.Context) (*api.ResourcesStatusResponse, error) {
-	const socketFN = "info.sock"
+	const socketFN = "/.supervisor/info.sock"
 
 	conn, err := grpc.DialContext(ctx, "unix://"+socketFN, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("could not dial context: %w", err)
 	}
 
 	client := daemonapi.NewWorkspaceInfoServiceClient(conn)
 	resp, err := client.WorkspaceInfo(ctx, &daemonapi.WorkspaceInfoRequest{})
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("could not retrieve workspace info: %w", err)
 	}
 
 	return &api.ResourcesStatusResponse{
