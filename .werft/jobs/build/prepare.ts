@@ -71,7 +71,7 @@ async function issueCertificate(werft: Werft, config: JobConfig) {
 }
 
 function decideHarvesterVMCreation(werft: Werft, config: JobConfig) {
-    if (!VM.vmExists({ name: config.previewEnvironment.destname }) || config.cleanSlateDeployment)
+    if (shouldCreateVM(config))
     {
         createVM(werft, config)
     }
@@ -80,7 +80,7 @@ function decideHarvesterVMCreation(werft: Werft, config: JobConfig) {
 }
 
 function shouldCreateVM(config: JobConfig) {
-    return config.withVM && config.withPreview && (
+    return config.withPreview && (
         !VM.vmExists({ name: config.previewEnvironment.destname }) ||
         config.cleanSlateDeployment
     )
