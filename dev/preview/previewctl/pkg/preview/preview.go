@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,19 +17,25 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+const harvesterContextName = "harvester"
+
 type Preview struct {
-	Branch string
+	branch                 string
+	name                   string
+	namespace              string
+	harvesterKubeClient    kubernetes.Interface
+	harvesterDynamicClient dynamic.Interface
 
 	logger *logrus.Entry
 }
 
-func New(branch string, logger *logrus.Logger) *Preview {
+func New(branch string, logger *logrus.Logger) (*Preview, error) {
 	if branch == "" {
 		out, err := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD").Output()
 		if err != nil {
@@ -42,45 +49,97 @@ func New(branch string, logger *logrus.Logger) *Preview {
 		}
 	}
 
+	branch = strings.TrimRight(branch, "\n")
 	logEntry := logger.WithFields(logrus.Fields{"branch": branch})
 
-	return &Preview{
-		Branch: branch,
-		logger: logEntry,
+	kconf, err := getKubernetesConfig(harvesterContextName)
+	if err != nil {
+		fmt.Println(err)
+		return nil, errors.New("couldn't get harvester kube context")
 	}
+
+	harvesterClient := kubernetes.NewForConfigOrDie(kconf)
+	harvesterDynamicClient := dynamic.NewForConfigOrDie(kconf)
+
+	return &Preview{
+		branch:                 branch,
+		namespace:              fmt.Sprintf("preview-%s", GetName(branch)),
+		name:                   GetName(branch),
+		harvesterKubeClient:    harvesterClient,
+		harvesterDynamicClient: harvesterDynamicClient,
+		logger:                 logEntry,
+	}, nil
 }
 
-func (p *Preview) InstallContext(watch bool) error {
-	if watch {
-		// The most precise implementation for a watch-loop would be to implement
-		// a pub-sub like logic where previewctl would react to changes of a preview IP address.
-		// For now just an infinite loop will do!
-		installTicker := time.NewTicker(30 * time.Second)
+func getKubernetesConfig(context string) (*rest.Config, error) {
+	configLoadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	configOverrides := &clientcmd.ConfigOverrides{CurrentContext: context}
 
-		// nolint:gosimple
+	kconf, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(configLoadingRules, configOverrides).ClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	return kconf, err
+}
+
+func (p *Preview) InstallContext(watch bool, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	// we use this channel to signal when we've found an event in wait functions, so we know when we're done
+	doneCh := make(chan struct{})
+	defer close(doneCh)
+
+	// TODO: fix this, as it's a bit ugly
+	err := p.getVMStatus(ctx)
+	if err != nil && !errors.Is(err, errVmNotReady) {
+		return err
+	} else if errors.Is(err, errVmNotReady) && !watch {
+		return err
+	} else if errors.Is(err, errVmNotReady) && watch {
+		err = p.waitVMReady(ctx, doneCh)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = p.getVMProxySvcStatus(ctx)
+	if err != nil && !errors.Is(err, errSvcNotReady) {
+		return err
+	} else if errors.Is(err, errSvcNotReady) && !watch {
+		return err
+	} else if errors.Is(err, errSvcNotReady) && watch {
+		err = p.waitProxySvcReady(ctx, doneCh)
+		if err != nil {
+			return err
+		}
+	}
+
+	if watch {
 		for {
 			select {
-			case <-installTicker.C:
-				err := installContext(p.Branch)
-				if err != nil {
-					p.logger.WithFields(logrus.Fields{"err": err}).Info("Failed to install context. Trying again in 30 seconds.")
-					continue
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.Tick(5 * time.Second):
+				p.logger.Infof("waiting for context install to succeed")
+				err = installContext(p.branch)
+				if err == nil {
+					return nil
 				}
-				p.logger.Info("Context installed.")
-				return nil
 			}
 		}
 	}
 
-	return installContext(p.Branch)
+	return installContext(p.branch)
 }
 
 func installContext(branch string) error {
 	return exec.Command("bash", "/workspace/gitpod/dev/preview/install-k3s-kubeconfig.sh", "-b", branch).Run()
 }
 
-func (p *Preview) SSHPreview() error {
-	sshCommand := exec.Command("bash", "/workspace/gitpod/dev/preview/ssh-vm.sh", "-b", p.Branch)
+func SSHPreview(branch string) error {
+	sshCommand := exec.Command("bash", "/workspace/gitpod/dev/preview/ssh-vm.sh", "-b", branch)
 
 	// We need to bind standard output files to the command
 	// otherwise 'previewctl' will exit as soon as the script is run.
@@ -91,8 +150,8 @@ func (p *Preview) SSHPreview() error {
 	return sshCommand.Run()
 }
 
-func (p *Preview) GetPreviewName() string {
-	withoutRefsHead := strings.Replace(p.Branch, "/refs/heads/", "", 1)
+func GetName(branch string) string {
+	withoutRefsHead := strings.Replace(branch, "/refs/heads/", "", 1)
 	lowerCased := strings.ToLower(withoutRefsHead)
 
 	var re = regexp.MustCompile(`[^-a-z0-9]`)
@@ -109,17 +168,8 @@ func (p *Preview) GetPreviewName() string {
 	return sanitizedBranch
 }
 
-func ListAllPreviews() error {
-	configLoadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	configOverrides := &clientcmd.ConfigOverrides{CurrentContext: "harvester"}
-
-	kconf, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(configLoadingRules, configOverrides).ClientConfig()
-	if err != nil {
-		return err
-	}
-	clientset := dynamic.NewForConfigOrDie(kconf)
-
-	previews, err := getVMs(clientset, context.Background())
+func (p *Preview) ListAllPreviews() error {
+	previews, err := p.getVMs(context.Background())
 	if err != nil {
 		return err
 	}
@@ -129,25 +179,4 @@ func ListAllPreviews() error {
 	}
 
 	return nil
-}
-
-func getVMs(clientset dynamic.Interface, ctx context.Context) ([]string, error) {
-	resourceId := schema.GroupVersionResource{
-		Group:    "kubevirt.io",
-		Version:  "v1",
-		Resource: "virtualmachines",
-	}
-
-	virtualMachineClient := clientset.Resource(resourceId).Namespace("")
-	vmObjs, err := virtualMachineClient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-
-	var vms []string
-	for _, item := range vmObjs.Items {
-		vms = append(vms, item.GetName())
-	}
-
-	return vms, nil
 }
