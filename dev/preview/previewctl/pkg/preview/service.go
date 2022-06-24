@@ -49,7 +49,7 @@ func (p *Preview) waitProxySvcReady(ctx context.Context, doneCh chan struct{}) e
 		AddFunc: func(obj interface{}) {
 			svc := obj.(*v1.Service)
 			if svc.Namespace == p.namespace && svc.Name == proxySvcName {
-				stopCh <- struct{}{}
+				doneCh <- struct{}{}
 			}
 		},
 	})
