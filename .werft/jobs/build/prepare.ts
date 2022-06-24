@@ -79,6 +79,13 @@ function decideHarvesterVMCreation(werft: Werft, config: JobConfig) {
     werft.done(prepareSlices.BOOT_VM)
 }
 
+function shouldCreateVM(config: JobConfig) {
+    return config.withVM && config.withPreview && (
+        !VM.vmExists({ name: config.previewEnvironment.destname }) ||
+        config.cleanSlateDeployment
+    )
+}
+
 // createVM only triggers the VM creation.
 // Readiness is not guaranted.
 function createVM(werft: Werft, config: JobConfig) {
