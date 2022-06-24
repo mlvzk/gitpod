@@ -40,8 +40,9 @@ module "k3s" {
 }
 
 locals {
-  eksmod = try(module.eks, null)
-  aksmod = try(module.aks, null)
+  eksmod = module.eks
+  aksmod = null
+  # aksmod = try(module.aks
   storage = coalesce(try(lookup(local.eksmod, "storage"), null), try(lookup(local.aksmod, "storage"), null))
   database = coalesce(try(lookup(local.eksmod, "database"), null), try(lookup(local.aksmod, "database"), null))
   registry = coalesce(try(lookup(local.eksmod, "registry"), null), try(lookup(local.aksmod, "registry"), null))

@@ -3,7 +3,7 @@ kind: ConfigValues
 spec:
   values:
       store_provider:
-        value: "S3"
+        value: "s3"
         data: "store_provider"
       store_region:
         value: "${REGION}"

@@ -156,7 +156,7 @@ get-config-aws-storage:
 	yq m -i tmp_config.yml tmp_2_config.yml
 
 get-config-aws-registry:
-	export SERVER=$$(terraform output -json registry | yq r - 'server') && \
+	export SERVER=$$(terraform output -json registry | yq r - 'server' | cut -d / -f 1) && \
 	export PASSWORD=$$(terraform output -json registry | yq r - 'password') && \
 	export USERNAME=$$(terraform output -json registry | yq r - 'username') && \
 	envsubst < ./manifests/kots-config-aws-registry.yaml > tmp_2_config.yml
@@ -174,7 +174,7 @@ license_community_stable := "../licenses/Community.yaml"
 license_community_unstable := "../licenses/Community (Unstable).yaml"
 
 install-kots-cli:
-	curl https://kots.io/install | bash
+	curl https://kots.io/install/1.72.0 | bash
 
 preflights ?= true
 channel ?= unstable

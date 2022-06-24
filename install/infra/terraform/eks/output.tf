@@ -53,7 +53,7 @@ output "database" {
 output "registry" {
   sensitive = true
   value = try({
-    server  = data.aws_ecr_authorization_token.gitpod.proxy_endpoint
+    server  = aws_ecr_repository.gitpod.repository_url
     username = data.aws_ecr_authorization_token.gitpod.user_name
     password = data.aws_ecr_authorization_token.gitpod.password
   }, {})
