@@ -29,8 +29,8 @@ resource "helm_release" "external_dns" {
   dynamic "set" {
     for_each = var.settings
     content {
-      name = setting.value["name"]
-      value = setting.value["value"]
+      name = set.value["name"]
+      value = set.value["value"]
     }
   }
 }

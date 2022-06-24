@@ -1,18 +1,14 @@
-locals {
-    cloud = var.k8s_flavor == "aks" ? module.aks : null
-}
-
 output "storage" {
     sensitive = true
-    value = try(lookup(local.cloud, "storage"), {})
+    value = local.storage
 }
 
 output "registry" {
     sensitive = true
-    value = try(lookup(local.cloud, "registry"), {})
+    value = local.registry
 }
 
 output "database" {
     sensitive = true
-    value = try(lookup(local.cloud, "database"), {})
+    value = local.database
 }

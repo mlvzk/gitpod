@@ -40,21 +40,23 @@ eks-standard-cluster:
 aks-standard-cluster:
 	terraform init --upgrade && \
 	terraform workspace new $(TF_VAR_TEST_ID) || terraform workspace select $(TF_VAR_TEST_ID) && \
-	terraform apply -target=module.aks -var k8s_flavor="aks" -var kubeconfig=${KUBECONFIG} --auto-approve
+	terraform apply -target=module.aks -var kubeconfig=${KUBECONFIG} --auto-approve
 
+cloud ?= azure
 .PHONY:
 ## add-ns-record: Adds NS record for subdomain under gitpod-selfhosted.com
 add-ns-record:
 	terraform init --upgrade && \
 	terraform workspace new $(TF_VAR_TEST_ID) || terraform workspace select $(TF_VAR_TEST_ID) && \
-	terraform apply -target=module.add_gcp_nameservers  -var kubeconfig=${KUBECONFIG} --auto-approve
+	terraform apply -target=module.$(cloud)-add-dns-record  -var kubeconfig=${KUBECONFIG} --auto-approve
 
+cloud ?= azure
 .PHONY:
 ## cluster-issuer: Creates a cluster issuer for the correspondign provider
 cluster-issuer:
 	terraform init --upgrade && \
 	terraform workspace new $(TF_VAR_TEST_ID) || terraform workspace select $(TF_VAR_TEST_ID) && \
-	terraform apply -target=module.azure-issuer  -var kubeconfig=${KUBECONFIG} --auto-approve
+	terraform apply -target=module.$(cloud)-issuer  -var kubeconfig=${KUBECONFIG} --auto-approve
 
 .PHONY:
 ## k3s-standard-cluster: Creates a K3S cluster on GCP with one master and 1 worker node
@@ -135,6 +137,29 @@ get-config-azure-db:
 	export DBPASS=$$(terraform output -json database | yq r - 'password') && \
 	export DBUSER=$$(terraform output -json database | yq r - 'username') && \
 	envsubst < ./manifests/kots-config-azure-db.yaml > tmp_2_config.yml
+	yq m -i tmp_config.yml tmp_2_config.yml
+
+get-config-aws-db:
+	export DBHOST=$$(terraform output -json database | yq r - 'host') && \
+	export DBPASS=$$(terraform output -json database | yq r - 'password') && \
+	export DBUSER=$$(terraform output -json database | yq r - 'username') && \
+	envsubst < ./manifests/kots-config-aws-db.yaml > tmp_2_config.yml
+	yq m -i tmp_config.yml tmp_2_config.yml
+
+get-config-aws-storage:
+	export REGION=$$(terraform output -json storage | yq r - 'region') && \
+	export ENDPOINT=$$(terraform output -json storage | yq r - 'endpoint') && \
+	export BUCKET=$$(terraform output -json storage | yq r - 'bucket_name') && \
+	export S3_ACCESS_KEY_ID=$$(terraform output -json storage | yq r - 'access_key_id') && \
+	export S3_SECRET_ACCESS_KEY=$$(terraform output -json storage | yq r - 'secret_access_key') && \
+	envsubst < ./manifests/kots-config-aws-storage.yaml > tmp_2_config.yml
+	yq m -i tmp_config.yml tmp_2_config.yml
+
+get-config-aws-registry:
+	export SERVER=$$(terraform output -json registry | yq r - 'server') && \
+	export PASSWORD=$$(terraform output -json registry | yq r - 'password') && \
+	export USERNAME=$$(terraform output -json registry | yq r - 'username') && \
+	envsubst < ./manifests/kots-config-aws-registry.yaml > tmp_2_config.yml
 	yq m -i tmp_config.yml tmp_2_config.yml
 
 storage ?= incluster

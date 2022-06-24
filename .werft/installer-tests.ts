@@ -92,7 +92,7 @@ const TEST_CONFIGURATIONS: { [name: string]: TestConfig } = {
         PHASES: [
             "STANDARD_AKS_CLUSTER",
             "CERT_MANAGER",
-            "AZURE_ISSUER",
+            "CLUSTER_ISSUER",
             "EXTERNALDNS",
             "ADD_NS_RECORD",
             "GENERATE_KOTS_CONFIG",
@@ -108,13 +108,11 @@ const TEST_CONFIGURATIONS: { [name: string]: TestConfig } = {
         DESCRIPTION: "Create an EKS cluster",
         PHASES: [
             "STANDARD_GKE_CLUSTER",
+            "STANDARD_EKS_CLUSTER", // this only creates aws dependencies for now
             "CERT_MANAGER",
             "EXTERNALDNS",
-            // TODO phases are:
-            // external dns with aws
-            // 1) register domains in AWS, associate with route53
-            // 2) add the associated ns record to gcp(since we use gitpod-self-hsoted.com domain)
-            // 3) create cluster issuer with route53 as solver
+            "CLUSTER_ISSUER",
+            "ADD_NS_RECORD",
             "GENERATE_KOTS_CONFIG",
             "INSTALL_GITPOD",
             // "CHECK_INSTALLATION",
@@ -171,18 +169,18 @@ const INFRA_PHASES: { [name: string]: InfraConfig } = {
         )} db=${randomize("db", cloud)}`,
         description: `Generate KOTS Config file`,
     },
-    AZURE_ISSUER: {
-        phase: "setup-azure-cluster-issuer",
+    CLUSTER_ISSUER: {
+        phase: `setup-azure-cluster-issuer cloud=${cloud}`,
         makeTarget: "azure-issuer",
         description: "Deploys ClusterIssuer for azure",
     },
     EXTERNALDNS: {
         phase: "external-dns",
-        makeTarget: `external-dns provider=${cloud}`,
+        makeTarget: `external-dns cloud=${cloud}`,
         description: `Deploys external-dns with ${cloud} provider`,
     },
     ADD_NS_RECORD: {
-        phase: "add-ns-record",
+        phase: `add-ns-record cloud=${cloud}`,
         makeTarget: "add-ns-record",
         description: "Adds NS record for subdomain under gitpod-self-hosted.com",
     },

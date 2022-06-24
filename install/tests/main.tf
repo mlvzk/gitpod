@@ -1,8 +1,6 @@
 variable "kubeconfig" { }
 variable "TEST_ID" { default = "nightly" }
 
-variable "k8s_flavor" { default = "gke" }
-
 # We store the state always in a GCS bucket
 terraform {
   backend "gcs" {
@@ -39,6 +37,14 @@ module "k3s" {
   dns_project      = "dns-for-playgrounds"
   managed_dns_zone = "gitpod-self-hosted-com"
   domain_name      = "${var.TEST_ID}.gitpod-self-hosted.com"
+}
+
+locals {
+  eksmod = try(module.eks, null)
+  aksmod = try(module.aks, null)
+  storage = coalesce(try(lookup(local.eksmod, "storage"), null), try(lookup(local.aksmod, "storage"), null))
+  database = coalesce(try(lookup(local.eksmod, "database"), null), try(lookup(local.aksmod, "database"), null))
+  registry = coalesce(try(lookup(local.eksmod, "registry"), null), try(lookup(local.aksmod, "registry"), null))
 }
 
 module "aks" {
@@ -95,12 +101,15 @@ module "azure-issuer" {
   source              = "../infra/terraform/tools/issuer/azure"
   kubeconfig          = var.kubeconfig
   cert_manager_issuer = module.aks.cert_manager_issuer
+  issuer_name         = "azureDNS"
 }
 
 module "aws-issuer" {
   source              = "../infra/terraform/tools/issuer/azure"
   kubeconfig          = var.kubeconfig
   cert_manager_issuer = module.eks.cert_manager_issuer
+  secretAccessKey     = module.eks.secretAccessKey
+  issuer_name         = "route53"
 }
 
 module "azure-add-dns-record" {
