@@ -17,12 +17,6 @@ pod:
   - name: monitoring-satellite-stackdriver-credentials
     secret:
       secretName: monitoring-satellite-stackdriver-credentials
-  - name: gcp-sa
-    secret:
-      secretName: gcp-sa-gitpod-dev-deployer
-  - name: gcp-sa-release
-    secret:
-      secretName: gcp-sa-gitpod-release-deployer
   - name: gpsh-coredev-license
     secret:
       secretName: gpsh-coredev-license
@@ -89,12 +83,6 @@ pod:
       mountPath: /mnt/secrets/monitoring-satellite-stackdriver-credentials
     - name: monitoring-satellite-preview-token
       mountPath: /mnt/secrets/monitoring-satellite-preview-token
-    - name: gcp-sa
-      mountPath: /mnt/secrets/gcp-sa
-      readOnly: true
-    - name: gcp-sa-release
-      mountPath: /mnt/secrets/gcp-sa-release
-      readOnly: true
     - name: gpsh-coredev-license
       mountPath: /mnt/secrets/gpsh-coredev
       readOnly: true
