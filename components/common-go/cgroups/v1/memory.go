@@ -18,8 +18,15 @@ type Memory struct {
 	path string
 }
 
+func NewMemoryControllerWithMount(mountPoint, path string) *Memory {
+	fullPath := filepath.Join(mountPoint, "memory", path)
+	return &Memory{
+		path: fullPath,
+	}
+}
+
 func NewMemoryController(path string) *Memory {
-	path = filepath.Join(path, "memory")
+	path = filepath.Join(cgroups.DefaultMountPoint, "memory", path)
 	return &Memory{
 		path: path,
 	}

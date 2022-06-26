@@ -1027,17 +1027,9 @@ func (wbs *InWorkspaceServiceServer) WorkspaceInfo(ctx context.Context, req *api
 		return nil, status.Errorf(codes.FailedPrecondition, "could not determine cgroup setup")
 	}
 
-	var resources *api.Resources
-	if unified {
-		resources, err = getResourceInfoFromV2(cgroupPath)
-		if err != nil {
-			return nil, status.Errorf(codes.Unknown, "could not get resources")
-		}
-	} else {
-		resources, err = getResourceInfoFromV1(cgroupPath)
-		if err != nil {
-			return nil, status.Errorf(codes.Unknown, "could not get resources")
-		}
+	resources, err := getWorkspaceResourceInfo(wbs.CGroupMountPoint, cgroupPath, unified)
+	if err != nil {
+		return nil, err
 	}
 
 	return &api.WorkspaceInfoResponse{
@@ -1058,7 +1050,28 @@ func (wbs *InWorkspaceServiceServer) WorkspaceInfo(ctx context.Context, req *api
 	// }, nil
 }
 
-func getResourceInfoFromV2(cgroupPath string) (*api.Resources, error) {
+func getWorkspaceResourceInfo(mountPoint, cgroupPath string, unified bool) (*api.Resources, error) {
+	if unified {
+		return getResourceInfoFromCgroupV2(cgroupPath)
+	} else {
+		cpu, err := getCpuResourceInfoV1(mountPoint, cgroupPath)
+		if err != nil {
+			return nil, err
+		}
+
+		memory, err := getMemoryResourceInfoV1(mountPoint, cgroupPath)
+		if err != nil {
+			return nil, err
+		}
+
+		return &api.Resources{
+			Cpu:    cpu,
+			Memory: memory,
+		}, nil
+	}
+}
+
+func getResourceInfoFromCgroupV2(cgroupPath string) (*api.Resources, error) {
 	memory := v2.NewMemoryController(cgroupPath)
 	memoryLimit, err := memory.Max()
 	if err != nil {
@@ -1077,7 +1090,7 @@ func getResourceInfoFromV2(cgroupPath string) (*api.Resources, error) {
 
 	usedMemory, err := memory.Current()
 	if err != nil {
-		return nil, xerrors.Errorf("failed to read current memory usage: %w")
+		return nil, xerrors.Errorf("failed to read current memory usage: %w", err)
 	}
 
 	// cpu := v2.NewCpuController(cgroupPath)
@@ -1097,67 +1110,21 @@ func getResourceInfoFromV2(cgroupPath string) (*api.Resources, error) {
 	}, nil
 }
 
-func getResourceInfoFromV1(cgroupPath string) (*api.Resources, error) {
-	cpu := v1.NewCpuController(cgroupPath)
-
-	t, err := resolveCPUStat()
-	if err != nil {
-		return nil, err
-	}
-
-	time.Sleep(time.Second)
-
-	t2, err := resolveCPUStat()
-	if err != nil {
-		return nil, err
-	}
-
-	cpuUsage := t2.usage - t.usage
-	totalTime := t2.uptime - t.uptime
-	used := cpuUsage / totalTime * 1000
-
-	cpuQuota, err := cpu.Quota()
-	if err != nil {
-		return nil, err
-	}
-
-	// if no cpu limit has been specified, use
-	if cpuQuota == math.MaxUint64 {
-		content, err := os.ReadFile(filepath.Join(cgroupPath, "cpuacct.usage_percpu"))
-		if err != nil {
-			return nil, xerrors.Errorf("failed to read cpuacct.usage_percpu: %w", err)
-		}
-		limit = len(strings.Split(strings.TrimSpace(string(content)), " ")) * 1000
-	}
-
-	return &api.Resources{
-		Memory: &api.Memory{
-			Used:  int64(usedMemory),
-			Limit: int64(memoryLimit),
-		},
-		Cpu: &api.Cpu{},
-	}, nil
-}
-
-func getCpuResourceInfoV1() (uint64, uin64, error) {
-
-}
-
-func getMemoryResourceInfoV1(cgroupPath string) (*api.Memory, error) {
-	memory := v1.NewMemoryController(cgroupPath)
+func getMemoryResourceInfoV1(mountPoint, cgroupPath string) (*api.Memory, error) {
+	memory := v1.NewMemoryControllerWithMount(mountPoint, cgroupPath)
 
 	memoryLimit, err := memory.Limit()
 	if err != nil {
 		return nil, err
 	}
 
-	// if no memory limit has been specified, use total available memory
-	if memoryLimit == math.MaxUint64 {
-		memInfo, err := linuxproc.ReadMemInfo("/proc/meminfo")
-		if err != nil {
-			return nil, xerrors.Errorf("failed to read meminfo: %w", err)
-		}
+	memInfo, err := linuxproc.ReadMemInfo("/proc/meminfo")
+	if err != nil {
+		return nil, xerrors.Errorf("failed to read meminfo: %w", err)
+	}
 
+	// if no memory limit has been specified, use total available memory
+	if memoryLimit == math.MaxUint64 || memoryLimit > memInfo.MemTotal*1024 {
 		// total memory is specifed on kilobytes -> convert to bytes
 		memoryLimit = memInfo.MemTotal * 1024
 	}
@@ -1180,7 +1147,57 @@ func getMemoryResourceInfoV1(cgroupPath string) (*api.Memory, error) {
 		}
 	}
 
-	return &api.Memory{}
+	return &api.Memory{
+		Limit: int64(memoryLimit),
+		Used:  int64(usedMemory),
+	}, nil
+}
+
+func getCpuResourceInfoV1(mountPoint, cgroupPath string) (*api.Cpu, error) {
+	cpu := v1.NewCpuControllerWithMount(mountPoint, cgroupPath)
+
+	t, err := resolveCPUStat(cpu)
+	if err != nil {
+		return nil, err
+	}
+
+	time.Sleep(time.Second)
+
+	t2, err := resolveCPUStat(cpu)
+	if err != nil {
+		return nil, err
+	}
+
+	cpuUsage := t2.usage - t.usage
+	totalTime := t2.uptime - t.uptime
+	used := cpuUsage / totalTime * 1000
+
+	quota, err := cpu.Quota()
+	if err != nil {
+		return nil, err
+	}
+
+	// if no cpu limit has been specified, use the number of cores
+	var limit uint64
+	if quota == math.MaxUint64 {
+		content, err := os.ReadFile(filepath.Join(mountPoint, "cpu", cgroupPath, "cpuacct.usage_percpu"))
+		if err != nil {
+			return nil, xerrors.Errorf("failed to read cpuacct.usage_percpu: %w", err)
+		}
+		limit = uint64(len(strings.Split(strings.TrimSpace(string(content)), " "))) * 1000
+	} else {
+		period, err := cpu.Period()
+		if err != nil {
+			return nil, err
+		}
+
+		limit = quota / period * 1000
+	}
+
+	return &api.Cpu{
+		Used:  int64(used),
+		Limit: int64(limit),
+	}, nil
 }
 
 type cpuStat struct {
@@ -1188,16 +1205,14 @@ type cpuStat struct {
 	uptime float64
 }
 
-func resolveCPUStat() (*cpuStat, error) {
-	cpu := v1.NewCpuController(cgroupPath)
-
-	usage, err := cpu.Usage()
+func resolveCPUStat(cpu *v1.Cpu) (*cpuStat, error) {
+	usage_ns, err := cpu.Usage()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get cpu usage: %w", err)
 	}
 
 	// convert from nanoseconds to seconds
-	usage *= 1e-9
+	usage := float64(usage_ns) * 1e-9
 	content, err := os.ReadFile("/proc/uptime")
 	if err != nil {
 		return nil, xerrors.Errorf("failed to read uptime: %w", err)
@@ -1207,6 +1222,7 @@ func resolveCPUStat() (*cpuStat, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to parse uptime: %w", err)
 	}
+
 	return &cpuStat{
 		usage:  usage,
 		uptime: uptime,

@@ -14,6 +14,8 @@ import (
 	v2 "github.com/containerd/cgroups/v2"
 )
 
+const DefaultMountPoint = "/sys/fs/cgroup"
+
 func IsUnifiedCgroupSetup() (bool, error) {
 	return cgroups.Mode() == cgroups.Unified, nil
 }
@@ -45,7 +47,7 @@ func ReadSingleValue(path string) (uint64, error) {
 	}
 
 	value := strings.TrimSpace(string(content))
-	if value == "max" {
+	if value == "max" || value == "-1" {
 		return math.MaxUint64, nil
 	}
 

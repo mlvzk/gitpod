@@ -14,8 +14,15 @@ type Cpu struct {
 	path string
 }
 
+func NewCpuControllerWithMount(mountPoint, path string) *Cpu {
+	fullPath := filepath.Join(mountPoint, "cpu", path)
+	return &Cpu{
+		path: fullPath,
+	}
+}
+
 func NewCpuController(path string) *Cpu {
-	path = filepath.Join(path, "cpu")
+	path = filepath.Join(cgroups.DefaultMountPoint, "cpu", path)
 	return &Cpu{
 		path: path,
 	}
