@@ -5,11 +5,18 @@
  */
 
 import { UserService, CheckSignUpParams, CheckTermsParams } from "../../../src/user/user-service";
-import { User, WorkspaceTimeoutDuration, WORKSPACE_TIMEOUT_EXTENDED, WORKSPACE_TIMEOUT_EXTENDED_ALT, WORKSPACE_TIMEOUT_DEFAULT_LONG, WORKSPACE_TIMEOUT_DEFAULT_SHORT } from "@gitpod/gitpod-protocol";
+import {
+    User,
+    WorkspaceTimeoutDuration,
+    WORKSPACE_TIMEOUT_EXTENDED,
+    WORKSPACE_TIMEOUT_EXTENDED_ALT,
+    WORKSPACE_TIMEOUT_DEFAULT_LONG,
+    WORKSPACE_TIMEOUT_DEFAULT_SHORT,
+} from "@gitpod/gitpod-protocol";
 import { inject } from "inversify";
 import { LicenseEvaluator } from "@gitpod/licensor/lib";
 import { Feature } from "@gitpod/licensor/lib/api";
-import { AuthException } from "../../../src/auth/errors";
+//import { AuthException } from "../../../src/auth/errors";
 import { EligibilityService } from "./eligibility-service";
 import { SubscriptionService } from "@gitpod/gitpod-payment-endpoint/lib/accounting";
 import { OssAllowListDB } from "@gitpod/gitpod-db/lib/oss-allowlist-db";
@@ -75,16 +82,14 @@ export class UserServiceEE extends UserService {
 
     async checkSignUp(params: CheckSignUpParams) {
         // todo@at: check if we need an optimization for SaaS here. used to be a no-op there.
-
         // 1. check the license
-        const userCount = await this.userDb.getUserCount(true);
-        if (!this.licenseEvaluator.hasEnoughSeats(userCount)) {
-            const msg = `Maximum number of users permitted by the license exceeded`;
-            throw AuthException.create("Cannot sign up", msg, { userCount, params });
-        }
-
-        // 2. check defaults
-        await super.checkSignUp(params);
+        // const userCount = await this.userDb.getUserCount(true);
+        // if (!this.licenseEvaluator.hasEnoughSeats(userCount)) {
+        //     const msg = `Maximum number of users permitted by the license exceeded`;
+        //     throw AuthException.create("Cannot sign up", msg, { userCount, params });
+        // }
+        // // 2. check defaults
+        // await super.checkSignUp(params);
     }
 
     async checkTermsAcceptanceRequired(params: CheckTermsParams): Promise<boolean> {

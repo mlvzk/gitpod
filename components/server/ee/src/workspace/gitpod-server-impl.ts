@@ -269,20 +269,20 @@ export class GitpodServerEEImpl extends GitpodServerImpl {
     }
 
     async validateLicense(ctx: TraceContext): Promise<LicenseValidationResult> {
-        const v = this.licenseEvaluator.validate();
-        if (!v.valid) {
-            return v;
-        }
+        // const v = this.licenseEvaluator.validate();
+        // if (!v.valid) {
+        //     return v;
+        // }
 
-        const userCount = await this.userDB.getUserCount(true);
-        const canAnotherUserSignUp = this.licenseEvaluator.hasEnoughSeats(userCount + 1);
-        if (!canAnotherUserSignUp) {
-            return {
-                valid: true,
-                issue: "seats-exhausted",
-                msg: "maximum number of users reached",
-            };
-        }
+        // const userCount = await this.userDB.getUserCount(true);
+        // const canAnotherUserSignUp = this.licenseEvaluator.hasEnoughSeats(userCount + 1);
+        // if (!canAnotherUserSignUp) {
+        //     return {
+        //         valid: true,
+        //         issue: "seats-exhausted",
+        //         msg: "maximum number of users reached",
+        //     };
+        // }
 
         return { valid: true };
     }
